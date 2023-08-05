@@ -2547,7 +2547,6 @@ class LC_IR_API IrBuilder : concepts::Noncopyable {
     raw::IrBuilder _inner;
 
 public:
-    friend class IrBuilder;
     [[nodiscard]] const Pooled<BasicBlock> &bb() const noexcept;
     [[nodiscard]] const CArc<ModulePools> &pools() const noexcept;
     [[nodiscard]] const NodeRef &insert_point() const noexcept;
