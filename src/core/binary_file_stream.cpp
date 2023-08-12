@@ -62,7 +62,7 @@ void BinaryFileStream::read(luisa::span<std::byte> dst) noexcept {
         return;
     }
     auto size = std::min(dst.size(), _length - _pos);
-    LUISA_FREAD(dst.data(), 1, size, _file);
+    auto t = LUISA_FREAD(dst.data(), 1, size, _file);
     _pos += size;
 }
 
