@@ -1041,7 +1041,7 @@ extern "C" fn eq_impl<T: UserNodeData>(a: *const u8, b: *const u8) -> bool {
 }
 
 fn type_id_u64<T: UserNodeData>() -> u64 {
-    unsafe { std::mem::transmute(TypeId::of::<T>()) }
+    unsafe { std::mem::transmute_copy::<TypeId, u64>(TypeId::of::<T>()) }
 }
 
 pub fn new_user_node<T: UserNodeData>(pools: &CArc<ModulePools>, data: T) -> NodeRef {
