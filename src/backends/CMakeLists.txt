@@ -44,6 +44,8 @@ endif ()
 
 if (LUISA_COMPUTE_ENABLE_CUDA)
     add_subdirectory(cuda)
+else ()
+    message(STATUS "No CUDA Built! ${LUISA_COMPUTE_ENABLE_CUDA}")
 endif ()
 
 if (LUISA_COMPUTE_ENABLE_RUST)

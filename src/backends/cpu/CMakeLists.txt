@@ -1,3 +1,4 @@
+message(STATUS "Build with CPU backend")
 set(LUISA_COMPUTE_CPU_SOURCES
         ../common/rust_device_common.cpp ../common/rust_device_common.h
         cpu_device.h cpu_device.cpp)
