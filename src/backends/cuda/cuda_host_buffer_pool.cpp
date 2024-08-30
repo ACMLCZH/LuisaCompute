@@ -28,7 +28,7 @@ CUDAHostBufferPool::View *CUDAHostBufferPool::allocate(size_t size, bool fallbac
         return node ? View::create(node, this) : nullptr;
     }();
     if (view == nullptr) [[unlikely]] {
-        LUISA_WARNING_WITH_LOCATION(
+        LUISA_INFO_WITH_LOCATION(
             "Failed to allocate {} bytes from "
             "CUDAHostBufferPool. Falling back "
             "to ad-hoc allocation.",
