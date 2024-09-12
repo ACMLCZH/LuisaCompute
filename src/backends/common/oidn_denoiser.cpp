@@ -91,8 +91,8 @@ void OidnDenoiser::init(const DenoiserExt::DenoiserInput &input) noexcept {
                 LUISA_ASSERT(!_albedo_prefilter, "Albedo prefilter already set.");
                 _albedo_prefilter = _oidn_device.newFilter("RT");
                 _albedo_buffer = get_buffer(f.image, true);
-                _albedo_prefilter.setImage("color", _albedo_buffer, get_format(f.image.format), input.width, input.height, 0, f.image.pixel_stride, f.image.row_stride);
-                _albedo_prefilter.setImage("output", _albedo_buffer, get_format(f.image.format), input.width, input.height, 0, f.image.pixel_stride, f.image.row_stride);
+                _albedo_prefilter.setImage("color", _albedo_buffer, get_format(f.image.format), input.width, input.height, f.image.offset, f.image.pixel_stride, f.image.row_stride);
+                _albedo_prefilter.setImage("output", _albedo_buffer, get_format(f.image.format), input.width, input.height, f.image.offset, f.image.pixel_stride, f.image.row_stride);
                 _albedo_prefilter.commit();
                 has_albedo = true;
                 albedo_image = &f.image;
@@ -102,8 +102,8 @@ void OidnDenoiser::init(const DenoiserExt::DenoiserInput &input) noexcept {
                 LUISA_ASSERT(!_normal_prefilter, "Normal prefilter already set.");
                 _normal_prefilter = _oidn_device.newFilter("RT");
                 _normal_buffer = get_buffer(f.image, true);
-                _normal_prefilter.setImage("color", _normal_buffer, get_format(f.image.format), input.width, input.height, 0, f.image.pixel_stride, f.image.row_stride);
-                _normal_prefilter.setImage("output", _normal_buffer, get_format(f.image.format), input.width, input.height, 0, f.image.pixel_stride, f.image.row_stride);
+                _normal_prefilter.setImage("color", _normal_buffer, get_format(f.image.format), input.width, input.height, f.image.offset, f.image.pixel_stride, f.image.row_stride);
+                _normal_prefilter.setImage("output", _normal_buffer, get_format(f.image.format), input.width, input.height, f.image.offset, f.image.pixel_stride, f.image.row_stride);
                 _normal_prefilter.commit();
                 has_normal = true;
                 normal_image = &f.image;
@@ -118,13 +118,13 @@ void OidnDenoiser::init(const DenoiserExt::DenoiserInput &input) noexcept {
         auto &out = input.layers[i].output;
         auto input_buffer = get_buffer(in, true);
         auto output_buffer = get_buffer(out, false);
-        filter.setImage("color", input_buffer, get_format(in.format), input.width, input.height, 0, in.pixel_stride, in.row_stride);
-        filter.setImage("output", output_buffer, get_format(out.format), input.width, input.height, 0, out.pixel_stride, out.row_stride);
+        filter.setImage("color", input_buffer, get_format(in.format), input.width, input.height, in.offset, in.pixel_stride, in.row_stride);
+        filter.setImage("output", output_buffer, get_format(out.format), input.width, input.height, out.offset, out.pixel_stride, out.row_stride);
         if (has_albedo) {
-            filter.setImage("albedo", _albedo_buffer, get_format(albedo_image->format), input.width, input.height, 0, albedo_image->pixel_stride, albedo_image->row_stride);
+            filter.setImage("albedo", _albedo_buffer, get_format(albedo_image->format), input.width, input.height, albedo_image->offset, albedo_image->pixel_stride, albedo_image->row_stride);
         }
         if (has_normal) {
-            filter.setImage("normal", _normal_buffer, get_format(normal_image->format), input.width, input.height, 0, normal_image->pixel_stride, normal_image->row_stride);
+            filter.setImage("normal", _normal_buffer, get_format(normal_image->format), input.width, input.height, normal_image->offset, normal_image->pixel_stride, normal_image->row_stride);
         }
         set_filter_properties(filter, in);
 

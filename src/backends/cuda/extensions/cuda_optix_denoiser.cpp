@@ -1,11 +1,52 @@
+#include <cuda.h>
 #include "cuda_optix_denoiser.h"
 #include <luisa/core/logging.h>
-namespace luisa::compute {
+
+namespace luisa::compute::cuda {
 
 OptixDenoiser::OptixDenoiser(CUDADevice *device, CUDAStream *stream) noexcept
     : _device(device), _stream(stream) {}
 
 OptixDenoiser::~OptixDenoiser() noexcept { reset(); }
+
+optix::PixelFormat OptixDenoiser::get_format(DenoiserExt::ImageFormat fmt) noexcept {
+    switch (fmt) {
+        case DenoiserExt::ImageFormat::FLOAT1: return optix::PixelFormat::PIXEL_FORMAT_FLOAT1;
+        case DenoiserExt::ImageFormat::FLOAT2: return optix::PixelFormat::PIXEL_FORMAT_FLOAT2;
+        case DenoiserExt::ImageFormat::FLOAT3: return optix::PixelFormat::PIXEL_FORMAT_FLOAT3;
+        case DenoiserExt::ImageFormat::FLOAT4: return optix::PixelFormat::PIXEL_FORMAT_FLOAT4;
+        case DenoiserExt::ImageFormat::HALF1: return optix::PixelFormat::PIXEL_FORMAT_HALF1;
+        case DenoiserExt::ImageFormat::HALF2: return optix::PixelFormat::PIXEL_FORMAT_HALF2;
+        case DenoiserExt::ImageFormat::HALF3: return optix::PixelFormat::PIXEL_FORMAT_HALF3;
+        case DenoiserExt::ImageFormat::HALF4: return optix::PixelFormat::PIXEL_FORMAT_HALF4;
+        default: LUISA_ERROR_WITH_LOCATION("Invalid image format: {}.", (uint)fmt);
+    }
+}
+
+optix::DenoiserAOVType OptixDenoiser::get_aov_type(DenoiserExt::ImageAOVType type) noexcept {
+    switch (type) {
+        case DenoiserExt::ImageAOVType::BEAUTY: return optix::DenoiserAOVType::DENOISER_AOV_TYPE_BEAUTY;
+        case DenoiserExt::ImageAOVType::DIFFUSE: return optix::DenoiserAOVType::DENOISER_AOV_TYPE_DIFFUSE;
+        case DenoiserExt::ImageAOVType::SPECULAR: return optix::DenoiserAOVType::DENOISER_AOV_TYPE_SPECULAR;
+        case DenoiserExt::ImageAOVType::REFLECTION: return optix::DenoiserAOVType::DENOISER_AOV_TYPE_REFLECTION;
+        case DenoiserExt::ImageAOVType::REFRACTION: return optix::DenoiserAOVType::DENOISER_AOV_TYPE_REFRACTION;
+        default: return optix::DenoiserAOVType::DENOISER_AOV_TYPE_BEAUTY;
+    }
+}
+
+optix::DenoiserModelKind OptixDenoiser::get_model_kind() noexcept {
+    switch ((_has_aov ? 1u : 0u) | (_has_upscale ? 2u : 0u) | (_has_temporal ? 4u : 0u)) {
+        case 0: return optix::DenoiserModelKind::DENOISER_MODEL_KIND_HDR;
+        case 1: return optix::DenoiserModelKind::DENOISER_MODEL_KIND_AOV;
+        case 2: return optix::DenoiserModelKind::DENOISER_MODEL_KIND_UPSCALE2X;
+        case 4: return optix::DenoiserModelKind::DENOISER_MODEL_KIND_TEMPORAL;
+        case 5: return optix::DenoiserModelKind::DENOISER_MODEL_KIND_TEMPORAL_AOV;
+        case 6: return optix::DenoiserModelKind::DENOISER_MODEL_KIND_TEMPORAL_UPSCALE2X;
+        default: LUISA_ERROR_WITH_LOCATION(
+            "Invalid denoiser model kind: [aov: {}, upscale: {}, temporal: {}].",
+            _has_aov, _has_upscale, _has_temporal);
+    }
+}
 
 optix::Image2D OptixDenoiser::build_Image2D(const DenoiserExt::Image &img) noexcept {
     optix::Image2D image;
@@ -16,7 +57,7 @@ optix::Image2D OptixDenoiser::build_Image2D(const DenoiserExt::Image &img) noexc
     image.rowStrideInBytes = img.row_stride;
     image.format = get_format(img.format);
     return image;
-};
+}
 
 optix::Image2D OptixDenoiser::create_Image2D(const DenoiserExt::Image &img) noexcept {
     optix::Image2D image;
@@ -29,7 +70,7 @@ optix::Image2D OptixDenoiser::create_Image2D(const DenoiserExt::Image &img) noex
     return image;
 }
 
-optix::Image2D OptixDenoiser::create_internal(const DenoiserExt::Image &img, const optix::DenoiserSizes &denoiser_sizes) {
+optix::Image2D OptixDenoiser::create_internal(const DenoiserExt::Image &img, const optix::DenoiserSizes &denoiser_sizes) noexcept {
     optix::Image2D image;
     unsigned int pixel_stride = denoiser_sizes.internalGuideLayerPixelSizeInBytes;
     LUISA_CHECK_CUDA(cuMemAllocAsync(
@@ -38,20 +79,9 @@ optix::Image2D OptixDenoiser::create_internal(const DenoiserExt::Image &img, con
     image.height = img.height;
     image.pixelStrideInBytes = pixel_stride;
     image.rowStrideInBytes = pixel_stride * img.width;
-    image.format = optix::PIXEL_FORMAT_INTERNAL_GUIDE_LAYER;
+    image.format = optix::PixelFormat::PIXEL_FORMAT_INTERNAL_GUIDE_LAYER;
     return image;
-};
-
-optix::DenoiserModelKind OptixDenoiser::get_model_kind() noexcept {
-    switch ((_has_aov ? 1u : 0u) | (_has_upscale ? 2u : 0u) | (_has_temporal ? 4u : 0u)) {
-        case 0: return optix::DenoiserModelKind::DENOISER_MODEL_KIND_HDR;
-        case 1: return optix::DenoiserModelKind::DENOISER_MODEL_KIND_AOV;
-        case 2: return optix::DenoiserModelKind::DENOISER_MODEL_KIND_UPSCALE2X;
-        case 4: return optix::DenoiserModelKind::DENOISER_MODEL_KIND_TEMPORAL;
-        case 5: return optix::DenoiserModelKind::DENOISER_MODEL_KIND_TEMPORAL_AOV;
-        case 6: return optix::DenoiserModelKind::DENOISER_MODEL_KIND_TEMPORAL_UPSCALE2X;
-    }
-};
+}
 
 void OptixDenoiser::reset() noexcept {
     LUISA_CHECK_OPTIX(optix::api().denoiserDestroy(_denoiser));
@@ -66,7 +96,7 @@ void OptixDenoiser::reset() noexcept {
             LUISA_CHECK_CUDA(cuMemFreeAsync(l.previousOutput.data, _stream->handle()));
         }
     }
-    _denoier = nullptr;
+    _denoiser = nullptr;
     _params = {};
     _layers = {};
     _guideLayer = {};
@@ -76,30 +106,6 @@ void OptixDenoiser::reset() noexcept {
 
 void OptixDenoiser::init(const DenoiserExt::DenoiserInput &input) noexcept {
     LUISA_ASSERT(input.layers.size() > 0, "input is empty!");
-    
-    auto get_format = [](DenoiserExt::ImageFormat fmt) noexcept {
-        switch (fmt) {
-            case FLOAT1: return optix::PIXEL_FORMAT_FLOAT1;
-            case FLOAT2: return optix::PIXEL_FORMAT_FLOAT2;
-            case FLOAT3: return optix::PIXEL_FORMAT_FLOAT3;
-            case FLOAT4: return optix::PIXEL_FORMAT_FLOAT4;
-            case HALF1: return optix::PIXEL_FORMAT_HALF1;
-            case HALF2: return optix::PIXEL_FORMAT_HALF2;
-            case HALF3: return optix::PIXEL_FORMAT_HALF3;
-            case HALF4: return optix::PIXEL_FORMAT_HALF4;
-            default: LUISA_ERROR_WITH_LOCATION("Invalid image format: {}.", (int)fmt);
-        }
-    };
-
-    auto get_aov_type = [](DenoiserExt::ImageAOVType type) noexcept {
-        switch (type) {
-            case BEAUTY: return optix::DenoiserAOVType::DENOISER_AOV_TYPE_BEAUTY;
-            case DIFFUSE: return optix::DenoiserAOVType::DENOISER_AOV_TYPE_DIFFUSE;
-            case SPECULAR: return optix::DenoiserAOVType::DENOISER_AOV_TYPE_SPECULAR;
-            case REFLECTION: return optix::DenoiserAOVType::DENOISER_AOV_TYPE_REFLECTION;
-            case REFRACTION: return optix::DenoiserAOVType::DENOISER_AOV_TYPE_REFRACTION;
-        }
-    };
 
     reset();
     auto optix_ctx = _device->handle().optix_context();
@@ -188,28 +194,6 @@ void OptixDenoiser::init(const DenoiserExt::DenoiserInput &input) noexcept {
     ));
 }
 
-    // auto cuda_stream = reinterpret_cast<CUDAStream *>(stream.handle())->handle();
-    // auto optix_ctx = _device->handle().optix_context();
-    // optix::DenoiserParams _params = {};
-    //_params.denoiseAlpha = _mode.alphamode ? optix::DENOISER_ALPHA_MODE_ALPHA_AS_AOV : optix::DENOISER_ALPHA_MODE_COPY;
-    // _params.hdrIntensity = _intensity;
-    // _params.hdrAverageColor = _avg_color;
-    // _params.blendFactor = 0.0f;
-    // _params.temporalModeUsePreviousLayers = 0;
-    // LUISA_ASSERT(data.beauty != nullptr && *data.beauty, "input image(beauty) is invalid!");
-    // _layers[0].input.data = reinterpret_cast<CUDABuffer *>(data.beauty->handle())->device_address();
-
-    // if (_mode.temporal)
-    //     _guideLayer.flow.data = reinterpret_cast<CUDABuffer *>(data.flow->handle())->device_address();
-
-    // if (data.albedo)
-    //     _guideLayer.albedo.data = reinterpret_cast<CUDABuffer *>(data.albedo->handle())->device_address();
-
-    // if (data.normal)
-    //     _guideLayer.normal.data = reinterpret_cast<CUDABuffer *>(data.normal->handle())->device_address();
-    // for (size_t i = 0; i < data.aov_size; i++)
-    //     _layers[i + 1].input.data = reinterpret_cast<CUDABuffer *>(data.aovs[i]->handle())->device_address();
-
 void OptixDenoiser::execute_denoise() noexcept {
     // Swap previous output
     if (_has_temporal && _has_aov) {
@@ -243,28 +227,4 @@ void OptixDenoiser::execute_denoise() noexcept {
         _scratch, _scratch_size));
 }
 
-// void CUDAOldDenoiserExt::denoise(Stream &stream, uint2 resolution, Buffer<float> const &image, Buffer<float> &output,
-//                                  Buffer<float> const &normal, Buffer<float> const &albedo, Buffer<float> **aovs, uint aov_size) noexcept {
-//     DenoiserMode mode{};
-//     mode.alphamode = 0;
-//     mode.kernel_pred = 0;
-//     mode.temporal = 0;
-//     mode.upscale = 0;
-
-//     DenoiserInput data{};
-//     data.beauty = &image;
-//     data.normal = &normal;
-//     data.albedo = &albedo;
-//     data.flow = nullptr;
-//     data.flowtrust = nullptr;
-//     data.aovs = aovs;
-//     data.aov_size = aov_size;
-//     _device->with_handle([&] {
-//         _init(stream, mode, data, resolution);
-//         _process(stream, data);
-//         _get_result(stream, output, -1);
-//         _destroy(stream);
-//     });
-// }
-
-}// namespace luisa::compute
+}// namespace luisa::compute::cuda

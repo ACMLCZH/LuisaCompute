@@ -755,14 +755,17 @@ LCDenoiserExt luisa_compute_denoiser_ext(LCDevice device) {
                         .input_scale = img.input_scale,
                     };
                 };
-                for(auto i =0;i<c_input->inputs_count;i++) {
-                    input.inputs.push_back(convert_img(c_input->inputs[i]));
-                    input.outputs.push_back(convert_img(c_input->outputs[i]));
+                for(auto i = 0; i < c_input->inputs_count; i++) {
+                    input.layers.emplace_back(
+                        convert_img(c_input->inputs[i]),
+                        convert_img(c_input->outputs[i]),
+                        DenoiserExt::ImageAOVType::BEAUTY
+                    );
                 }
 
-                for(auto i = 0;i<c_input->features_count;i++) {
+                for(auto i = 0; i < c_input->features_count; i++) {
                     auto &f = c_input->features[i];
-                   input.features.push_back(DenoiserExt::Feature{
+                    input.features.push_back(DenoiserExt::Feature{
                         .name = luisa::string{luisa::string_view{f.name, f.name_len}},
                        .image = convert_img(f.image),
                     });
