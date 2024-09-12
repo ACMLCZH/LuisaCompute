@@ -86,7 +86,7 @@ void OidnDenoiser::init(const DenoiserExt::DenoiserInput &input) noexcept {
     const DenoiserExt::Image *normal_image = nullptr;
     if (input.prefilter_mode != DenoiserExt::PrefilterMode::NONE) {
         for (auto &f : input.features) {
-            if (f.name == "albedo") {
+            if (f.type == DenoiserExt::ImageFeatureType::ALBEDO) {
                 LUISA_ASSERT(!has_albedo, "Albedo feature already set.");
                 LUISA_ASSERT(!_albedo_prefilter, "Albedo prefilter already set.");
                 _albedo_prefilter = _oidn_device.newFilter("RT");
@@ -97,7 +97,7 @@ void OidnDenoiser::init(const DenoiserExt::DenoiserInput &input) noexcept {
                 has_albedo = true;
                 albedo_image = &f.image;
                 set_prefilter_properties(_albedo_prefilter);
-            } else if (f.name == "normal") {
+            } else if (f.type == DenoiserExt::ImageFeatureType::NORMAL) {
                 LUISA_ASSERT(!has_normal, "Normal feature already set.");
                 LUISA_ASSERT(!_normal_prefilter, "Normal prefilter already set.");
                 _normal_prefilter = _oidn_device.newFilter("RT");
@@ -108,17 +108,14 @@ void OidnDenoiser::init(const DenoiserExt::DenoiserInput &input) noexcept {
                 has_normal = true;
                 normal_image = &f.image;
                 set_prefilter_properties(_normal_prefilter);
-            } else {
-                LUISA_ERROR_WITH_LOCATION("Invalid feature name: {}.", f.name);
             }
         }
     }
-    LUISA_ASSERT(!input.inputs.empty(), "Empty input.");
-    LUISA_ASSERT(input.inputs.size() == input.outputs.size(), "Input/output count mismatch.");
-    for (auto i = 0; i < input.inputs.size(); i++) {
+    LUISA_ASSERT(!input.layers.empty(), "Empty input.");
+    for (auto i = 0; i < input.layers.size(); i++) {
         auto filter = _oidn_device.newFilter("RT");
-        auto &in = input.inputs[i];
-        auto &out = input.outputs[i];
+        auto &in = input.layers[i].input;
+        auto &out = input.layers[i].output;
         auto input_buffer = get_buffer(in, true);
         auto output_buffer = get_buffer(out, false);
         filter.setImage("color", input_buffer, get_format(in.format), input.width, input.height, 0, in.pixel_stride, in.row_stride);
