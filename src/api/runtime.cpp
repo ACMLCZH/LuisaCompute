@@ -766,8 +766,8 @@ LCDenoiserExt luisa_compute_denoiser_ext(LCDevice device) {
                 for(auto i = 0; i < c_input->features_count; i++) {
                     auto &f = c_input->features[i];
                     input.features.push_back(DenoiserExt::Feature{
-                        .name = luisa::string{luisa::string_view{f.name, f.name_len}},
-                       .image = convert_img(f.image),
+                        .type = DenoiserExt::get_feature_type(luisa::string_view{f.name, f.name_len}),
+                        .image = convert_img(f.image),
                     });
                 }
                 reinterpret_cast<DenoiserExt::Denoiser *>(denoiser)->init(input); },

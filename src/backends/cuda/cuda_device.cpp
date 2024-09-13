@@ -975,9 +975,7 @@ DeviceExtension *CUDADevice::extension(luisa::string_view name) noexcept {
         if (v == nullptr) { v = luisa::make_unique<CUDA##ext##Ext>(this); } \
         return v.get();                                                     \
     }
-#if LUISA_BACKEND_ENABLE_OIDN
     LUISA_COMPUTE_CREATE_CUDA_EXTENSION(Denoiser, _denoiser_ext)
-#endif
     LUISA_COMPUTE_CREATE_CUDA_EXTENSION(DStorage, _dstorage_ext)
     LUISA_COMPUTE_CREATE_CUDA_EXTENSION(PinnedMemory, _pinned_memory_ext)
 #ifdef LUISA_COMPUTE_ENABLE_NVTT

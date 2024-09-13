@@ -84,7 +84,10 @@ optix::Image2D OptixDenoiser::create_internal(const DenoiserExt::Image &img, con
 }
 
 void OptixDenoiser::reset() noexcept {
-    LUISA_CHECK_OPTIX(optix::api().denoiserDestroy(_denoiser));
+    if (_denoiser) {
+        LUISA_CHECK_OPTIX(optix::api().denoiserDestroy(_denoiser));
+        _denoiser = nullptr;
+    }
     LUISA_CHECK_CUDA(cuMemFreeAsync(_params.hdrIntensity, _stream->handle()));
     LUISA_CHECK_CUDA(cuMemFreeAsync(_params.hdrAverageColor, _stream->handle()));
     LUISA_CHECK_CUDA(cuMemFreeAsync(_scratch, _stream->handle()));
@@ -96,7 +99,6 @@ void OptixDenoiser::reset() noexcept {
             LUISA_CHECK_CUDA(cuMemFreeAsync(l.previousOutput.data, _stream->handle()));
         }
     }
-    _denoiser = nullptr;
     _params = {};
     _layers = {};
     _guideLayer = {};

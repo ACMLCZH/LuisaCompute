@@ -106,10 +106,7 @@ private:
     std::mutex _ext_mutex;
     luisa::unique_ptr<CUDADStorageExt> _dstorage_ext;
     luisa::unique_ptr<CUDAPinnedMemoryExt> _pinned_memory_ext;
-
-#if LUISA_BACKEND_ENABLE_OIDN
     luisa::unique_ptr<CUDADenoiserExt> _denoiser_ext;
-#endif
 
 #ifdef LUISA_COMPUTE_ENABLE_NVTT
     luisa::unique_ptr<CUDATexCompressExt> _tex_comp_ext;
