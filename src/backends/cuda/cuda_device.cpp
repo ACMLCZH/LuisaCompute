@@ -989,8 +989,8 @@ DeviceExtension *CUDADevice::extension(luisa::string_view name) noexcept {
 
 namespace detail {
 
-static constexpr auto required_cuda_version_major = 11;
-static constexpr auto required_cuda_version_minor = 7;
+static constexpr auto required_cuda_version_major = 12;
+static constexpr auto required_cuda_version_minor = 0;
 static constexpr auto required_cuda_version = required_cuda_version_major * 1000 + required_cuda_version_minor * 10;
 
 static void initialize() {

@@ -50,6 +50,9 @@ inline void patch_ptx_version(luisa::string &ptx) noexcept {
         return;
     }
     auto patched_version = luisa::format("{}.0", version.substr(0, sep));
+    LUISA_WARNING_WITH_LOCATION(
+        "Patch PTX version from {} to {}.",
+        version, patched_version);
     // now lets contrust the new ptx
     std::memcpy(ptx.data() + (remaining.data() - ptx.data() + version_begin),
                 patched_version.data(), patched_version.size());
