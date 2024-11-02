@@ -65,6 +65,7 @@ public:
     luisa::unordered_map<luisa::string, luisa::unique_ptr<BackendModule>> loaded_backends;
     luisa::vector<luisa::string> installed_backends;
     ValidationLayer validation_layer;
+    std::filesystem::path subdirectory;
     luisa::unordered_map<luisa::string, luisa::unique_ptr<std::filesystem::path>> runtime_subdir_paths;
     std::mutex runtime_subdir_mutex;
     std::mutex module_mutex;
@@ -101,7 +102,7 @@ public:
         return validation_layer;
     }
 
-    explicit ContextImpl(luisa::string_view program_path) noexcept {
+    explicit ContextImpl(luisa::string_view program_path, luisa::string_view sub_mark) noexcept {
         std::filesystem::path program{program_path};
         {
             auto cp = std::filesystem::canonical(program);
@@ -113,6 +114,18 @@ public:
         }
         LUISA_INFO("Created context for program '{}'.", to_string(program.filename()));
         LUISA_INFO("Runtime directory: {}.", to_string(runtime_directory));
+        
+        {
+            subdirectory = runtime_directory / sub_mark;
+            std::error_code ec;
+            luisa::filesystem::create_directories(subdirectory, ec);
+            if (ec) [[unlikely]] {
+                LUISA_WARNING_WITH_LOCATION(
+                    "Failed to create runtime sub-directory '{}': {}.",
+                    to_string(subdirectory), ec.message());
+            }
+        }
+
         DynamicModule::add_search_path(runtime_directory);
         for (auto &&p : std::filesystem::directory_iterator{runtime_directory}) {
             if (auto &&path = p.path();
@@ -145,22 +158,20 @@ public:
 
     ~ContextImpl() noexcept {
         DynamicModule::remove_search_path(runtime_directory);
-        for (auto p: runtime_subdir_paths) {
-            std::error_code ec;
-            luisa::filesystem::remove_all(p.second, ec);
-            if (ec) [[unlikely]] {
-                LUISA_WARNING_WITH_LOCATION(
-                    "Failed to remove runtime sub-directory '{}': {}.",
-                    to_string(p.second), ec.message());
-            }
+        std::error_code ec;
+        luisa::filesystem::remove_all(subdirectory, ec);
+        if (ec) [[unlikely]] {
+            LUISA_WARNING_WITH_LOCATION(
+                "Failed to remove runtime sub-directory '{}': {}.",
+                to_string(*p.second), ec.message());
         }
     }
 };
 
 }// namespace detail
 
-Context::Context(string_view program_path) noexcept
-    : _impl{luisa::make_shared<detail::ContextImpl>(program_path)} {}
+Context::Context(string_view program_path, string_view sub_mark) noexcept
+    : _impl{luisa::make_shared<detail::ContextImpl>(program_path, sub_mark)} {}
 
 Device Context::create_device(luisa::string_view backend_name_in, const DeviceConfig *settings, bool enable_validation) noexcept {
     luisa::string backend_name{backend_name_in};
@@ -218,7 +229,7 @@ const luisa::filesystem::path &Context::create_runtime_subdir(luisa::string_view
     auto iter = _impl->runtime_subdir_paths.try_emplace(
         folder_name,
         luisa::lazy_construct([&]() {
-            auto dir = runtime_directory() / folder_name;
+            auto dir = _impl->subdirectory / folder_name;
             std::error_code ec;
             luisa::filesystem::create_directories(dir, ec);
             if (ec) [[unlikely]] {

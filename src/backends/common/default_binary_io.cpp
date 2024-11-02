@@ -117,10 +117,10 @@ void DefaultBinaryIO::_write(const luisa::string &file_path, luisa::span<std::by
     _unlock(idx, true);
 }
 
-DefaultBinaryIO::DefaultBinaryIO(Context &&ctx, const luisa::string &id, void *ext) noexcept
+DefaultBinaryIO::DefaultBinaryIO(Context &&ctx, void *ext) noexcept
     : _ctx(std::move(ctx)),
-      _cache_dir{_ctx.create_runtime_subdir(luisa::format(".cache_{}", id))},
-      _data_dir{_ctx.create_runtime_subdir(luisa::format(".data_{}", id))},
+      _cache_dir{_ctx.create_runtime_subdir(".cache"sv)},
+      _data_dir{_ctx.create_runtime_subdir(".data"sv)},
       _data_lmdb{_data_dir, std::max<size_t>(126ull, std::thread::hardware_concurrency() * 2)},
       _cache_lmdb{_cache_dir, std::max<size_t>(126ull, std::thread::hardware_concurrency() * 2)} {
 }
