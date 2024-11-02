@@ -36,7 +36,7 @@ private:
     void _unlock(MapIndex const &idx, bool is_write) const noexcept;
 
 public:
-    explicit DefaultBinaryIO(Context &&ctx, void *ext = nullptr) noexcept;
+    explicit DefaultBinaryIO(Context &&ctx, luisa::string const &id = "", void *ext = nullptr) noexcept;
     ~DefaultBinaryIO() noexcept override;
     luisa::unique_ptr<BinaryStream> read_shader_bytecode(luisa::string_view name) const noexcept override;
     luisa::unique_ptr<BinaryStream> read_shader_cache(luisa::string_view name) const noexcept override;

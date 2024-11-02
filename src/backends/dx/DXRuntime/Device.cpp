@@ -107,7 +107,7 @@ Device::Device(Context &&ctx, DeviceConfig const *settings)
         }
     }
     if (fileIo == nullptr) {
-        serVisitor = vstd::make_unique<DefaultBinaryIO>(std::move(ctx), device.Get());
+        serVisitor = vstd::make_unique<DefaultBinaryIO>(std::move(ctx), "", device.Get());
         fileIo = serVisitor.get();
     }
     if (useRuntime) {

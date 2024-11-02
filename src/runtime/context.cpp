@@ -142,8 +142,18 @@ public:
             std::unique(installed_backends.begin(), installed_backends.end()),
             installed_backends.end());
     }
+
     ~ContextImpl() noexcept {
         DynamicModule::remove_search_path(runtime_directory);
+        for (auto p: runtime_subdir_paths) {
+            std::error_code ec;
+            luisa::filesystem::remove_all(p.second, ec);
+            if (ec) [[unlikely]] {
+                LUISA_WARNING_WITH_LOCATION(
+                    "Failed to remove runtime sub-directory '{}': {}.",
+                    to_string(p.second), ec.message());
+            }
+        }
     }
 };
 

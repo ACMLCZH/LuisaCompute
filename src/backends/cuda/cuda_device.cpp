@@ -112,13 +112,27 @@ namespace luisa::compute::cuda {
                               luisa::to_underlying(format));
 }
 
+[[nodiscard]] static auto format_uuid(auto uuid) noexcept {
+    luisa::string result;
+    result.reserve(36u);
+    auto count = 0u;
+    for (auto c : uuid.bytes) {
+        if (count == 4u || count == 6u || count == 8u || count == 10u) {
+            result.append("-");
+        }
+        result.append(fmt::format("{:02x}", static_cast<uint>(c) & 0xffu));
+        count++;
+    }
+    return result;
+};
+
 CUDADevice::CUDADevice(Context &&ctx,
                        size_t device_id,
                        const BinaryIO *io) noexcept
     : DeviceInterface{std::move(ctx)}, _handle{device_id}, _io{io} {
     // provide a default binary IO
     if (_io == nullptr) {
-        _default_io = luisa::make_unique<DefaultBinaryIO>(context());
+        _default_io = luisa::make_unique<DefaultBinaryIO>(context(), format_uuid(_handle.uuid()));
         _io = _default_io.get();
     }
     _compiler = luisa::make_unique<CUDACompiler>(this);
@@ -1052,20 +1066,6 @@ CUDADevice::Handle::Handle(size_t index) noexcept {
     LUISA_CHECK_CUDA(cuDeviceGetAttribute(&unified_addressing, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, _device));
     LUISA_VERBOSE("Device {} can map host memory: {}", index, can_map_host_memory != 0);
     LUISA_VERBOSE("Device {} supports unified addressing: {}", index, unified_addressing != 0);
-
-    auto format_uuid = [](auto uuid) noexcept {
-        luisa::string result;
-        result.reserve(36u);
-        auto count = 0u;
-        for (auto c : uuid.bytes) {
-            if (count == 4u || count == 6u || count == 8u || count == 10u) {
-                result.append("-");
-            }
-            result.append(fmt::format("{:02x}", static_cast<uint>(c) & 0xffu));
-            count++;
-        }
-        return result;
-    };
 
     LUISA_INFO("Created CUDA device at index {}: {} "
                "(driver = {}, capability = {}.{}, uuid = {}).",
