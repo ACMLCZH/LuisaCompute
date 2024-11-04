@@ -116,7 +116,7 @@ public:
         LUISA_INFO("Runtime directory: {}.", to_string(runtime_directory));
         
         {
-            subdirectory = runtime_directory / sub_mark;
+            subdirectory = runtime_directory / luisa::format("ctx_{}", sub_mark);
             std::error_code ec;
             luisa::filesystem::create_directories(subdirectory, ec);
             if (ec) [[unlikely]] {
@@ -160,10 +160,11 @@ public:
         DynamicModule::remove_search_path(runtime_directory);
         std::error_code ec;
         luisa::filesystem::remove_all(subdirectory, ec);
+        LUISA_INFO_WITH_LOCATION("Remove sub-directory '{}'", to_string(subdirectory));
         if (ec) [[unlikely]] {
             LUISA_WARNING_WITH_LOCATION(
                 "Failed to remove runtime sub-directory '{}': {}.",
-                to_string(*p.second), ec.message());
+                to_string(subdirectory), ec.message());
         }
     }
 };
@@ -172,6 +173,16 @@ public:
 
 Context::Context(string_view program_path, string_view sub_mark) noexcept
     : _impl{luisa::make_shared<detail::ContextImpl>(program_path, sub_mark)} {}
+
+Context::Context(luisa::shared_ptr<detail::ContextImpl> impl) noexcept
+    : _impl{std::move(impl)} {
+    LUISA_INFO("Context Impl use count when building = {}", _impl.use_count());
+}
+
+// Context::~Context() noexcept: = default;
+Context::~Context() noexcept {
+    LUISA_INFO("Context Impl use count when destroying = {}", _impl.use_count());
+}
 
 Device Context::create_device(luisa::string_view backend_name_in, const DeviceConfig *settings, bool enable_validation) noexcept {
     luisa::string backend_name{backend_name_in};
@@ -196,11 +207,6 @@ Device Context::create_device(luisa::string_view backend_name_in, const DeviceCo
         return Device{std::move(handle)};
     }
 }
-
-Context::Context(luisa::shared_ptr<detail::ContextImpl> impl) noexcept
-    : _impl{std::move(impl)} {}
-
-Context::~Context() noexcept = default;
 
 luisa::span<const luisa::string> Context::installed_backends() const noexcept {
     return _impl->installed_backends;
