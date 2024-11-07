@@ -175,14 +175,9 @@ Context::Context(string_view program_path, string_view sub_mark) noexcept
     : _impl{luisa::make_shared<detail::ContextImpl>(program_path, sub_mark)} {}
 
 Context::Context(luisa::shared_ptr<detail::ContextImpl> impl) noexcept
-    : _impl{std::move(impl)} {
-    LUISA_INFO("Context Impl use count when building = {}", _impl.use_count());
-}
+    : _impl{std::move(impl)} { }
 
-// Context::~Context() noexcept: = default;
-Context::~Context() noexcept {
-    LUISA_INFO("Context Impl use count when destroying = {}", _impl.use_count());
-}
+Context::~Context() noexcept = default;
 
 Device Context::create_device(luisa::string_view backend_name_in, const DeviceConfig *settings, bool enable_validation) noexcept {
     luisa::string backend_name{backend_name_in};
@@ -238,6 +233,7 @@ const luisa::filesystem::path &Context::create_runtime_subdir(luisa::string_view
             auto dir = _impl->subdirectory / folder_name;
             std::error_code ec;
             luisa::filesystem::create_directories(dir, ec);
+            LUISA_INFO_WITH_LOCATION("Create runtime-subdirectory '{}'", to_string(dir));
             if (ec) [[unlikely]] {
                 LUISA_WARNING_WITH_LOCATION(
                     "Failed to create runtime sub-directory '{}': {}.",
