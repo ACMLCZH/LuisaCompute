@@ -70,6 +70,7 @@
 #include <luisa/dsl/rtx/accel.h>
 #include <luisa/dsl/rtx/curve.h>
 #include <luisa/dsl/rtx/hit.h>
+#include <luisa/dsl/rtx/motion.h>
 #include <luisa/dsl/rtx/ray.h>
 #include <luisa/dsl/rtx/ray_query.h>
 #include <luisa/dsl/rtx/triangle.h>
@@ -195,4 +196,45 @@
 #include <luisa/vstl/v_guid.h>
 #include <luisa/vstl/vector.h>
 #include <luisa/vstl/vstring.h>
+
+#ifdef LUISA_ENABLE_XIR
+#include <luisa/xir/argument.h>
+#include <luisa/xir/basic_block.h>
+#include <luisa/xir/builder.h>
+#include <luisa/xir/constant.h>
+#include <luisa/xir/function.h>
+#include <luisa/xir/ilist.h>
+#include <luisa/xir/instruction.h>
+#include <luisa/xir/instructions/alloca.h>
+#include <luisa/xir/instructions/assert.h>
+#include <luisa/xir/instructions/branch.h>
+#include <luisa/xir/instructions/break.h>
+#include <luisa/xir/instructions/call.h>
+#include <luisa/xir/instructions/cast.h>
+#include <luisa/xir/instructions/continue.h>
+#include <luisa/xir/instructions/gep.h>
+#include <luisa/xir/instructions/if.h>
+#include <luisa/xir/instructions/intrinsic.h>
+#include <luisa/xir/instructions/load.h>
+#include <luisa/xir/instructions/loop.h>
+#include <luisa/xir/instructions/outline.h>
+#include <luisa/xir/instructions/phi.h>
+#include <luisa/xir/instructions/print.h>
+#include <luisa/xir/instructions/ray_query.h>
+#include <luisa/xir/instructions/return.h>
+#include <luisa/xir/instructions/store.h>
+#include <luisa/xir/instructions/switch.h>
+#include <luisa/xir/instructions/unreachable.h>
+#include <luisa/xir/metadata.h>
+#include <luisa/xir/metadata/comment.h>
+#include <luisa/xir/metadata/location.h>
+#include <luisa/xir/metadata/name.h>
+#include <luisa/xir/module.h>
+#include <luisa/xir/pool.h>
+#include <luisa/xir/translators/ast2xir.h>
+#include <luisa/xir/translators/xir2text.h>
+#include <luisa/xir/use.h>
+#include <luisa/xir/user.h>
+#include <luisa/xir/value.h>
+#endif
 

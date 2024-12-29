@@ -180,9 +180,7 @@ public:
     [[nodiscard]] auto handle() const noexcept { return _handle; }
     [[nodiscard]] auto offset() const noexcept { return _offset; }
     [[nodiscard]] auto size() const noexcept { return _size; }
-    [[nodiscard]] auto data() const noexcept {
-        return _data;
-    }
+    [[nodiscard]] auto data() const noexcept { return _data; }
     LUISA_MAKE_COMMAND_COMMON(StreamTag::COPY)
 };
 
@@ -366,9 +364,7 @@ public:
     [[nodiscard]] auto level() const noexcept { return _level; }
     [[nodiscard]] auto size() const noexcept { return uint3(_size[0], _size[1], _size[2]); }
     [[nodiscard]] auto offset() const noexcept { return uint3(_offset[0], _offset[1], _offset[2]); }
-    [[nodiscard]] auto data() const noexcept {
-        return _data;
-    }
+    [[nodiscard]] auto data() const noexcept { return _data; }
     LUISA_MAKE_COMMAND_COMMON(StreamTag::COPY)
 };
 

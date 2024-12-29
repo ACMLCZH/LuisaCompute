@@ -311,8 +311,7 @@ struct luisa_compute_extension {};
         const Expression *_expression;                                                       \
                                                                                              \
     public:                                                                                  \
-        explicit Ref(const Expression *e) noexcept                                           \
-            : _expression{e} {}                                                              \
+        explicit Ref(const Expression *e) noexcept : _expression{e} {}                       \
         [[nodiscard]] auto expression() const noexcept { return this->_expression; }         \
         Ref(Ref &&another) noexcept = default;                                               \
         Ref(const Ref &another) noexcept = default;                                          \

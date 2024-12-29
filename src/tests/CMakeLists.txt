@@ -93,6 +93,10 @@ luisa_compute_add_executable(test_oso_parser test_oso_parser.cpp)
 luisa_compute_add_executable(test_cuda_dx_interop test_cuda_dx_interop.cpp)
 luisa_compute_add_executable(test_pinned_mem test_pinned_mem.cpp)
 
+# XIR tests
+luisa_compute_add_executable(test_ast_to_xir test_ast_to_xir.cpp)
+luisa_compute_add_executable(test_xir_builder test_xir_builder.cpp)
+
 if (LUISA_COMPUTE_ENABLE_CLANG_CXX)
     luisa_compute_add_executable(clangcxx_compiler clangcxx_compiler.cpp)
     luisa_compute_add_executable(test_clang_cxx test_clang_cxx.cpp)

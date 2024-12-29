@@ -116,7 +116,10 @@ endif ()
 
 # add platform macros
 if (WIN32)
-    target_compile_definitions(luisa-compute-include INTERFACE LUISA_PLATFORM_WINDOWS=1)
+    target_compile_definitions(luisa-compute-include INTERFACE
+            LUISA_PLATFORM_WINDOWS=1
+            _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR=1 # workaround for MSVC, again
+    )
 elseif (UNIX)
     target_compile_definitions(luisa-compute-include INTERFACE LUISA_PLATFORM_UNIX=1)
     if (APPLE)

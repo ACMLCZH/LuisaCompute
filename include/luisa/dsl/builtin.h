@@ -72,7 +72,7 @@ inline void device_assert(Expr<bool> pred, luisa::string_view msg) noexcept {
 }
 
 /// Get thread_id(uint3)
-[[nodiscard]] inline auto thread_id() noexcept {
+[[nodiscard]] inline const auto thread_id() noexcept {
     return def<uint3>(detail::FunctionBuilder::current()->thread_id());
 }
 
@@ -92,7 +92,7 @@ inline void device_assert(Expr<bool> pred, luisa::string_view msg) noexcept {
 }
 
 /// Get block_id(uint3)
-[[nodiscard]] inline auto block_id() noexcept {
+[[nodiscard]] inline const auto block_id() noexcept {
     return def<uint3>(detail::FunctionBuilder::current()->block_id());
 }
 
@@ -112,7 +112,7 @@ inline void device_assert(Expr<bool> pred, luisa::string_view msg) noexcept {
 }
 
 /// Get dispatch_id(uint3)
-[[nodiscard]] inline auto dispatch_id() noexcept {
+[[nodiscard]] inline const auto dispatch_id() noexcept {
     return def<uint3>(detail::FunctionBuilder::current()->dispatch_id());
 }
 [[nodiscard]] inline auto object_id() noexcept {
@@ -143,7 +143,7 @@ inline void device_assert(Expr<bool> pred, luisa::string_view msg) noexcept {
 }
 
 /// Get dispatch size(uint3)
-[[nodiscard]] inline auto dispatch_size() noexcept {
+[[nodiscard]] inline const auto dispatch_size() noexcept {
     return def<uint3>(detail::FunctionBuilder::current()->dispatch_size());
 }
 
@@ -163,7 +163,7 @@ inline void device_assert(Expr<bool> pred, luisa::string_view msg) noexcept {
 }
 
 /// Get block size(uint3)
-[[nodiscard]] inline auto block_size() noexcept {
+[[nodiscard]] inline const auto block_size() noexcept {
     return detail::FunctionBuilder::current()->block_size();
 }
 
