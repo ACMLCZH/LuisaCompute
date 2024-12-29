@@ -5,8 +5,11 @@ set(LUISA_COMPUTE_VALIDATION_SOURCES
         depth_buffer.h
         device.cpp device.h
         dstorage_ext_impl.cpp dstorage_ext_impl.h
+        native_res_ext_impl.cpp native_res_ext_impl.h
         event.h
         mesh.h
+        curve.cpp curve.h
+        motion_instance.cpp motion_instance.h
         pinned_mem_impl.cpp pinned_mem_impl.h
         procedural_primitives.h
         range.h

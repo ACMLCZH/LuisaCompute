@@ -127,10 +127,15 @@ public:
         _check_is_valid();
         return _size * _element_stride;
     }
+    // views
+    [[nodiscard]] auto view_unchecked() const noexcept {
+        return BufferView<T>{this->native_handle(), this->handle(), _element_stride, 0u, _size, _size};
+    }
+
     [[nodiscard]] auto view() const noexcept {
         _check_is_valid();
         return BufferView<T>{this->native_handle(), this->handle(), _element_stride, 0u, _size, _size};
-    }
+    }    
     [[nodiscard]] auto view(size_t offset, size_t count) const noexcept {
         return view().subview(offset, count);
     }
@@ -142,6 +147,9 @@ public:
     // copy pointer's data to buffer
     [[nodiscard]] auto copy_from(const void *data) noexcept {
         return this->view().copy_from(data);
+    }
+    [[nodiscard]] auto copy_from(const void *data, luisa::move_only_function<void(void*)>&& upload_callback) noexcept {
+        return this->view().copy_from(data, std::move(upload_callback));
     }
     // copy source buffer's data to buffer
     [[nodiscard]] auto copy_from(BufferView<T> source) noexcept {
@@ -201,6 +209,8 @@ public:
     [[nodiscard]] auto offset() const noexcept { return _offset_bytes / _element_stride; }
     [[nodiscard]] auto offset_bytes() const noexcept { return _offset_bytes; }
     [[nodiscard]] auto size_bytes() const noexcept { return _size * _element_stride; }
+    [[nodiscard]] auto total_size() const noexcept { return _total_size; }
+    [[nodiscard]] auto total_size_bytes() const noexcept { return _total_size * _element_stride; }
 
     [[nodiscard]] auto original() const noexcept {
         return BufferView{_native_handle, _handle,

@@ -38,7 +38,7 @@ TexCompressExt::Result DxTexCompressExt::compress_bc6h(Stream &stream, ImageView
         true,
         0,
         device->defaultAllocator.get(),
-        device->maxAllocatorCount);
+        2);
     return Result::Success;
 }
 
@@ -51,7 +51,7 @@ TexCompressExt::Result DxTexCompressExt::compress_bc7(Stream &stream, ImageView<
         false,
         alphaImportance,
         device->defaultAllocator.get(),
-        device->maxAllocatorCount);
+        2);
     return Result::Success;
 }
 TexCompressExt::Result DxTexCompressExt::check_builtin_shader() noexcept {

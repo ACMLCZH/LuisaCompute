@@ -1,14 +1,10 @@
 #pragma once
 
-#include <cstdlib>
-#include <array>
-
 #include <luisa/core/macro.h>
 #include <luisa/core/basic_types.h>
 #include <luisa/core/stl/vector.h>
 #include <luisa/core/stl/memory.h>
 #include <luisa/core/stl/variant.h>
-#include <luisa/core/stl/string.h>
 #include <luisa/core/stl/functional.h>
 #include <luisa/ast/usage.h>
 #include <luisa/runtime/rhi/pixel.h>
@@ -16,6 +12,7 @@
 #include <luisa/runtime/rhi/sampler.h>
 #include <luisa/runtime/rhi/argument.h>
 #include <luisa/runtime/rhi/curve_basis.h>
+#include <luisa/runtime/rtx/motion_transform.h>
 
 // for validation
 namespace lc::validation {
@@ -44,6 +41,7 @@ struct IndirectDispatchArg {
         MeshBuildCommand,                \
         CurveBuildCommand,               \
         ProceduralPrimitiveBuildCommand, \
+        MotionInstanceBuildCommand,      \
         BindlessArrayUpdateCommand,      \
         CustomCommand
 
@@ -182,7 +180,9 @@ public:
     [[nodiscard]] auto handle() const noexcept { return _handle; }
     [[nodiscard]] auto offset() const noexcept { return _offset; }
     [[nodiscard]] auto size() const noexcept { return _size; }
-    [[nodiscard]] auto data() const noexcept { return _data; }
+    [[nodiscard]] auto data() const noexcept {
+        return _data;
+    }
     LUISA_MAKE_COMMAND_COMMON(StreamTag::COPY)
 };
 
@@ -366,7 +366,9 @@ public:
     [[nodiscard]] auto level() const noexcept { return _level; }
     [[nodiscard]] auto size() const noexcept { return uint3(_size[0], _size[1], _size[2]); }
     [[nodiscard]] auto offset() const noexcept { return uint3(_offset[0], _offset[1], _offset[2]); }
-    [[nodiscard]] auto data() const noexcept { return _data; }
+    [[nodiscard]] auto data() const noexcept {
+        return _data;
+    }
     LUISA_MAKE_COMMAND_COMMON(StreamTag::COPY)
 };
 
@@ -509,6 +511,25 @@ public:
     [[nodiscard]] auto aabb_buffer() const noexcept { return _aabb_buffer; }
     [[nodiscard]] auto aabb_buffer_offset() const noexcept { return _aabb_buffer_offset; }
     [[nodiscard]] auto aabb_buffer_size() const noexcept { return _aabb_buffer_size; }
+    LUISA_MAKE_COMMAND_COMMON(StreamTag::COMPUTE)
+};
+
+class MotionInstanceBuildCommand final : public Command {
+
+private:
+    uint64_t _handle{};
+    uint64_t _child{};
+    luisa::vector<MotionInstanceTransform> _keyframes;
+
+public:
+    MotionInstanceBuildCommand(uint64_t handle, uint64_t child,
+                               luisa::vector<MotionInstanceTransform> keyframes) noexcept
+        : Command{Command::Tag::EMotionInstanceBuildCommand},
+          _handle{handle}, _child{child}, _keyframes{std::move(keyframes)} {}
+    [[nodiscard]] auto handle() const noexcept { return _handle; }
+    [[nodiscard]] auto child() const noexcept { return _child; }
+    [[nodiscard]] auto keyframes() const noexcept { return luisa::span{_keyframes}; }
+    [[nodiscard]] auto steal_keyframes() noexcept { return std::move(_keyframes); }
     LUISA_MAKE_COMMAND_COMMON(StreamTag::COMPUTE)
 };
 
@@ -689,7 +710,7 @@ public:
 
     class ArgumentVisitor {
     public:
-        ~ArgumentVisitor() noexcept = default;
+        virtual ~ArgumentVisitor() noexcept = default;
         virtual void visit(const Argument::Buffer &, Usage usage) noexcept = 0;
         virtual void visit(const Argument::Texture &, Usage usage) noexcept = 0;
         virtual void visit(const Argument::BindlessArray &, Usage usage) noexcept = 0;
@@ -698,7 +719,7 @@ public:
 
 public:
     explicit CustomDispatchCommand() noexcept = default;
-    virtual ~CustomDispatchCommand() noexcept override = default;
+    ~CustomDispatchCommand() noexcept override = default;
 
     virtual void traverse_arguments(ArgumentVisitor &visitor) const noexcept = 0;
 

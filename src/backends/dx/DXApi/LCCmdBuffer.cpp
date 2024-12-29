@@ -325,6 +325,9 @@ public:
                 meshOptions,
                 bottomAccelDatas->emplace_back()));
     }
+    void visit(const MotionInstanceBuildCommand *) noexcept override {
+        LUISA_NOT_IMPLEMENTED();
+    }
     void visit(const ProceduralPrimitiveBuildCommand *cmd) noexcept override {
         auto accel = reinterpret_cast<BottomAccel *>(cmd->handle());
         BottomAccel::AABBOptions aabbOptions{
@@ -454,6 +457,10 @@ public:
             cmd->level(),
             CommandBufferBuilder::BufferTextureCopy::BufferToTexture,
             true);
+    }
+
+    void visit(const MotionInstanceBuildCommand *) noexcept override {
+        LUISA_NOT_IMPLEMENTED();
     }
 
     struct Visitor {
@@ -1183,140 +1190,149 @@ void LCCmdBuffer::CompressBC(
         outBufferPtr,
         result.offset_bytes(),
         result.size_bytes()};
-    auto alloc = queue.CreateAllocator(maxAlloc);
-    {
-        std::lock_guard lck{mtx};
-        tracker.listType = alloc->Type();
-        auto bufferReadState = tracker.ReadState(ResourceReadUsage::Srv);
-        auto cmdBuffer = alloc->GetBuffer();
-        auto cmdBuilder = cmdBuffer->Build();
-        ID3D12DescriptorHeap *h[2] = {
-            device->globalHeap->GetHeap(),
-            device->samplerHeap->GetHeap()};
-        cmdBuffer->CmdList()->SetDescriptorHeaps(vstd::array_count(h), h);
 
-        BCCBuffer cbData{
-            .g_mip_level = level
-        };
-        tracker.RecordState(rt, tracker.ReadState(ResourceReadUsage::Srv, rt));
-        auto RunComputeShader = [&](ComputeShader const *cs, uint dispatchCount, BufferView const &inBuffer, BufferView const &outBuffer) {
-            auto cbuffer = alloc->GetTempUploadBuffer(sizeof(BCCBuffer), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-            static_cast<UploadBuffer const *>(cbuffer.buffer)->CopyData(cbuffer.offset, {reinterpret_cast<uint8_t const *>(&cbData), sizeof(BCCBuffer)});
-            tracker.RecordState(
-                inBuffer.buffer,
-                bufferReadState);
-            tracker.RecordState(
-                outBuffer.buffer,
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            tracker.UpdateState(cmdBuilder);
-            BindProperty prop[4];
-            prop[0] = cbuffer;
-            prop[1] = DescriptorHeapView(device->globalHeap.get(), rt->GetGlobalSRVIndex());
-            prop[2] = inBuffer;
-            prop[3] = outBuffer;
-            cmdBuilder.DispatchCompute(
-                cs,
-                uint3(dispatchCount, 1, 1),
-                {prop, 4});
-        };
-        constexpr uint MAX_BLOCK_BATCH = 65536u;
-        uint startBlockID = 0;
-        if (isHDR)//bc6
+    constexpr uint MAX_BATCH = 1024 * 1024;
+    int batchNum = (numTotalBlocks + MAX_BATCH - 1) / MAX_BATCH;
+    uint startBlockID = 0;
+    for (int batch = 0; batch < batchNum; batch++) {
+        int target = (batch + 1) * MAX_BATCH;
+        auto alloc = queue.CreateAllocator(maxAlloc);
         {
-            BufferView err1Buffer{&backBuffer};
-            BufferView err2Buffer{outBuffer};
-            auto bc6TryModeG10 = device->bc6TryModeG10.Get(device);
-            auto bc6TryModeLE10 = device->bc6TryModeLE10.Get(device);
-            auto bc6Encode = device->bc6EncodeBlock.Get(device);
-            while (numBlocks > 0) {
-                uint n = std::min<uint>(numBlocks, MAX_BLOCK_BATCH);
-                uint uThreadGroupCount = n;
-                cbData.g_tex_width = width;
-                cbData.g_num_block_x = xBlocks;
-                cbData.g_format = isHDR ? DXGI_FORMAT_BC6H_UF16 : DXGI_FORMAT_BC7_UNORM;
-                cbData.g_start_block_id = startBlockID;
-                cbData.g_alpha_weight = alphaImportance;
-                cbData.g_num_total_blocks = numTotalBlocks;
-                RunComputeShader(
-                    bc6TryModeG10,
-                    std::max<uint>((uThreadGroupCount + 3) / 4, 1),
-                    err2Buffer,
-                    err1Buffer);
-                for (auto i : vstd::range(10)) {
-                    cbData.g_mode_id = i;
-                    RunComputeShader(
-                        bc6TryModeLE10,
-                        std::max<uint>((uThreadGroupCount + 1) / 2, 1),
-                        ((i & 1) != 0) ? err2Buffer : err1Buffer,
-                        ((i & 1) != 0) ? err1Buffer : err2Buffer);
-                }
-                RunComputeShader(
-                    bc6Encode,
-                    std::max<uint>((uThreadGroupCount + 1) / 2, 1),
-                    err1Buffer,
-                    err2Buffer);
-                startBlockID += n;
-                numBlocks -= n;
-            }
+            std::lock_guard lck{mtx};
+            tracker.listType = alloc->Type();
+            auto bufferReadState = tracker.ReadState(ResourceReadUsage::Srv);
+            auto cmdBuffer = alloc->GetBuffer();
+            auto cmdBuilder = cmdBuffer->Build();
+            ID3D12DescriptorHeap *h[2] = {
+                device->globalHeap->GetHeap(),
+                device->samplerHeap->GetHeap()};
+            cmdBuffer->CmdList()->SetDescriptorHeaps(vstd::array_count(h), h);
 
-        } else {
-            BufferView err1Buffer{outBuffer};
-            BufferView err2Buffer{&backBuffer};
-            auto bc7Try137Mode = device->bc7TryMode137.Get(device);
-            auto bc7Try02Mode = device->bc7TryMode02.Get(device);
-            auto bc7Try456Mode = device->bc7TryMode456.Get(device);
-            auto bc7Encode = device->bc7EncodeBlock.Get(device);
-            while (numBlocks > 0) {
-                uint n = std::min<uint>(numBlocks, MAX_BLOCK_BATCH);
-                uint uThreadGroupCount = n;
-                cbData.g_tex_width = width;
-                cbData.g_num_block_x = xBlocks;
-                cbData.g_format = isHDR ? DXGI_FORMAT_BC6H_UF16 : DXGI_FORMAT_BC7_UNORM;
-                cbData.g_start_block_id = startBlockID;
-                cbData.g_alpha_weight = alphaImportance;
-                cbData.g_num_total_blocks = numTotalBlocks;
-                RunComputeShader(bc7Try456Mode, std::max<uint>((uThreadGroupCount + 3) / 4, 1), err2Buffer, err1Buffer);
-                //137
-                {
-                    uint modes[] = {1, 3, 7};
-                    for (auto i : vstd::range(vstd::array_count(modes))) {
-                        cbData.g_mode_id = modes[i];
+            BCCBuffer cbData{
+                .g_mip_level = level};
+            tracker.RecordState(rt, tracker.ReadState(ResourceReadUsage::Srv, rt));
+            auto RunComputeShader = [&](ComputeShader const *cs, uint dispatchCount, BufferView const &inBuffer, BufferView const &outBuffer) {
+                auto cbuffer = alloc->GetTempUploadBuffer(sizeof(BCCBuffer), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+                static_cast<UploadBuffer const *>(cbuffer.buffer)->CopyData(cbuffer.offset, {reinterpret_cast<uint8_t const *>(&cbData), sizeof(BCCBuffer)});
+                tracker.RecordState(
+                    inBuffer.buffer,
+                    bufferReadState);
+                tracker.RecordState(
+                    outBuffer.buffer,
+                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                tracker.UpdateState(cmdBuilder);
+                BindProperty prop[4];
+                prop[0] = cbuffer;
+                prop[1] = DescriptorHeapView(device->globalHeap.get(), rt->GetGlobalSRVIndex());
+                prop[2] = inBuffer;
+                prop[3] = outBuffer;
+                cmdBuilder.DispatchCompute(
+                    cs,
+                    uint3(dispatchCount, 1, 1),
+                    {prop, 4});
+            };
+            constexpr uint MAX_BLOCK_BATCH = 1024u * 512u;
+            if (isHDR)//bc6
+            {
+                BufferView err1Buffer{&backBuffer};
+                BufferView err2Buffer{outBuffer};
+                auto bc6TryModeG10 = device->bc6TryModeG10.Get(device);
+                auto bc6TryModeLE10 = device->bc6TryModeLE10.Get(device);
+                auto bc6Encode = device->bc6EncodeBlock.Get(device);
+                while (numBlocks > 0 && startBlockID < target) {
+                    uint n = std::min<uint>(numBlocks, MAX_BLOCK_BATCH);
+                    uint uThreadGroupCount = n;
+                    cbData.g_tex_width = width;
+                    cbData.g_num_block_x = xBlocks;
+                    cbData.g_format = isHDR ? DXGI_FORMAT_BC6H_UF16 : DXGI_FORMAT_BC7_UNORM;
+                    cbData.g_start_block_id = startBlockID;
+                    cbData.g_alpha_weight = alphaImportance;
+                    cbData.g_num_total_blocks = numTotalBlocks;
+                    RunComputeShader(
+                        bc6TryModeG10,
+                        std::max<uint>((uThreadGroupCount + 3) / 4, 1),
+                        err2Buffer,
+                        err1Buffer);
+                    for (auto i : vstd::range(10)) {
+                        cbData.g_mode_id = i;
                         RunComputeShader(
-                            bc7Try137Mode,
-                            uThreadGroupCount,
+                            bc6TryModeLE10,
+                            std::max<uint>((uThreadGroupCount + 1) / 2, 1),
                             ((i & 1) != 0) ? err2Buffer : err1Buffer,
                             ((i & 1) != 0) ? err1Buffer : err2Buffer);
                     }
+                    RunComputeShader(
+                        bc6Encode,
+                        std::max<uint>((uThreadGroupCount + 1) / 2, 1),
+                        err1Buffer,
+                        err2Buffer);
+                    startBlockID += n;
+                    numBlocks -= n;
                 }
-                //02
-                {
-                    uint modes[] = {0, 2};
-                    for (auto i : vstd::range(vstd::array_count(modes))) {
-                        cbData.g_mode_id = modes[i];
-                        RunComputeShader(
-                            bc7Try02Mode,
-                            uThreadGroupCount,
-                            ((i & 1) != 0) ? err1Buffer : err2Buffer,
-                            ((i & 1) != 0) ? err2Buffer : err1Buffer);
+
+            } else {
+                BufferView err1Buffer{outBuffer};
+                BufferView err2Buffer{&backBuffer};
+                auto bc7Try137Mode = device->bc7TryMode137.Get(device);
+                auto bc7Try02Mode = device->bc7TryMode02.Get(device);
+                auto bc7Try456Mode = device->bc7TryMode456.Get(device);
+                auto bc7Encode = device->bc7EncodeBlock.Get(device);
+                while (numBlocks > 0 && startBlockID < target) {
+                    uint n = std::min<uint>(numBlocks, MAX_BLOCK_BATCH);
+                    uint uThreadGroupCount = n;
+                    cbData.g_tex_width = width;
+                    cbData.g_num_block_x = xBlocks;
+                    cbData.g_format = isHDR ? DXGI_FORMAT_BC6H_UF16 : DXGI_FORMAT_BC7_UNORM;
+                    cbData.g_start_block_id = startBlockID;
+                    cbData.g_alpha_weight = alphaImportance;
+                    cbData.g_num_total_blocks = numTotalBlocks;
+                    RunComputeShader(bc7Try456Mode, std::max<uint>((uThreadGroupCount + 3) / 4, 1), err2Buffer, err1Buffer);
+                    //137
+                    {
+                        uint modes[] = {1, 3, 7};
+                        for (auto i : vstd::range(vstd::array_count(modes))) {
+                            cbData.g_mode_id = modes[i];
+                            RunComputeShader(
+                                bc7Try137Mode,
+                                uThreadGroupCount,
+                                ((i & 1) != 0) ? err2Buffer : err1Buffer,
+                                ((i & 1) != 0) ? err1Buffer : err2Buffer);
+                        }
                     }
+                    //02
+                    {
+                        uint modes[] = {0, 2};
+                        for (auto i : vstd::range(vstd::array_count(modes))) {
+                            cbData.g_mode_id = modes[i];
+                            RunComputeShader(
+                                bc7Try02Mode,
+                                uThreadGroupCount,
+                                ((i & 1) != 0) ? err1Buffer : err2Buffer,
+                                ((i & 1) != 0) ? err2Buffer : err1Buffer);
+                        }
+                    }
+                    RunComputeShader(
+                        bc7Encode,
+                        std::max<uint>((uThreadGroupCount + 3) / 4, 1),
+                        err2Buffer,
+                        err1Buffer);
+                    //TODO
+                    startBlockID += n;
+                    numBlocks -= n;
                 }
-                RunComputeShader(
-                    bc7Encode,
-                    std::max<uint>((uThreadGroupCount + 3) / 4, 1),
-                    err2Buffer,
-                    err1Buffer);
-                //TODO
-                startBlockID += n;
-                numBlocks -= n;
             }
+            tracker.RecordState(outBufferPtr, D3D12_RESOURCE_STATE_COPY_SOURCE);
+            tracker.RestoreState(cmdBuilder);
         }
-        tracker.RecordState(outBufferPtr, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        tracker.RestoreState(cmdBuilder);
+        if (batch == batchNum - 1) {
+            vstd::vector<vstd::function<void()>> callbacks;
+            callbacks.emplace_back([backBuffer = std::move(backBuffer)] {});
+            queue.ExecuteCallbacks(
+                std::move(alloc),
+                std::move(callbacks));
+        } else {
+            queue.Execute(std::move(alloc));
+        }
     }
-    vstd::vector<vstd::function<void()>> callbacks;
-    callbacks.emplace_back([backBuffer = std::move(backBuffer)] {});
-    queue.ExecuteCallbacks(
-        std::move(alloc),
-        std::move(callbacks));
 }
 }// namespace lc::dx

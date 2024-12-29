@@ -493,7 +493,7 @@ private:
         }
         _stream << _font_texture.copy_from(pixels);
         auto tex_id = register_texture(_font_texture, Sampler::linear_point_edge());
-        io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(tex_id));
+        io.Fonts->SetTexID(tex_id);
     }
 
 private:
@@ -513,7 +513,7 @@ private:
         if (!_accel) {
             _accel = _device.create_accel(o);
             _mesh_handle = _device.impl()->create_mesh(o).handle;
-            _accel.emplace_back(_mesh_handle);
+            _accel.emplace_back_handle(_mesh_handle, make_float4x4(1.f), 0xffu, true, 0u);
         }
         if (!_vertex_buffer) { _vertex_buffer = _device.create_buffer<Vertex>(std::max(next_pow2(_vertices.size()), 64_k)); }
         if (!_triangle_buffer) { _triangle_buffer = _device.create_buffer<Triangle>(std::max(next_pow2(_triangles.size()), 64_k)); }
@@ -601,7 +601,7 @@ private:
                     auto clip_idx = static_cast<uint>(_clip_rects.size());
                     _clip_rects.emplace_back(make_float4(clip_min, clip_max));
                     auto tex_id = [this, cmd] {
-                        auto t = reinterpret_cast<uint64_t>(cmd->TextureId);
+                        auto t = cmd->TextureId;
                         if (t != 0u && !_active_textures.contains(t)) {
                             LUISA_WARNING_WITH_LOCATION(
                                 "Using an unregistered texture (id = {}). "

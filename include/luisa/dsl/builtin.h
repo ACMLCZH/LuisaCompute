@@ -2003,7 +2003,7 @@ void Local<T>::backward() const noexcept {
 }
 
 template<typename T>
-void Local<T>::backward(const Local<T> grad) const noexcept {
+void Local<T>::backward(const Local<T> &grad) const noexcept {
     dsl::backward(*this, grad);
 }
 

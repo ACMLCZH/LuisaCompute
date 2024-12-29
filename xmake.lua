@@ -32,10 +32,21 @@ set_values(true, false)
 set_default(true)
 set_showmenu(true)
 option_end()
+
+option("dx_cuda_interop")
+set_values(true, false)
+set_default(false)
+set_showmenu(true)
+option_end()
 -- enable Vulkan backend
 option("vk_backend")
 set_values(true, false)
 -- TODO: vulkan backend not ready
+set_default(false)
+set_showmenu(true)
+option_end()
+option("toy_c_backend")
+set_values(true, false)
 set_default(false)
 set_showmenu(true)
 option_end()
@@ -143,6 +154,10 @@ set_showmenu(true)
 option_end()
 -- pre-defined options end
 
+-- use xrepo from skr
+add_repositories("skr-xrepo xrepo", {
+    rootdir = os.projectdir()
+})
 -- try options.lua
 if path.absolute(os.projectdir()) == path.absolute(os.scriptdir()) and os.exists("scripts/options.lua") then
     includes("scripts/options.lua")

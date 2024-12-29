@@ -30,9 +30,9 @@ option("_lc_bin_dir")
 set_default(false)
 set_showmenu(false)
 add_deps("enable_mimalloc", "enable_unity_build", "enable_simd", "dx_backend", "vk_backend", "cuda_backend",
-        "metal_backend", "cpu_backend", "enable_tests", "enable_custom_malloc", "enable_clangcxx", "py_include",
-        "py_linkdir", "external_marl", "py_libs", "cuda_ext_lcub", "enable_ir", "enable_osl", "enable_api", "enable_dsl",
-        "enable_gui", "bin_dir", "sdk_dir", "_lc_enable_py", "_lc_enable_rust")
+    "metal_backend", "cpu_backend", "enable_tests", "enable_custom_malloc", "enable_clangcxx", "py_include",
+    "py_linkdir", "external_marl", "py_libs", "cuda_ext_lcub", "enable_ir", "enable_osl", "enable_api", "enable_dsl",
+    "enable_gui", "bin_dir", "sdk_dir", "_lc_enable_py", "_lc_enable_rust")
 before_check(function(option)
     if path.absolute(path.join(os.projectdir(), "scripts")) == path.absolute(os.scriptdir()) then
         local v = import("options", {
@@ -202,18 +202,18 @@ on_load(function(target)
     if not is_plat("windows") then
         if project_kind == "static" or project_kind == "object" then
             target:add("cxflags", "-fPIC", {
-                tools = { "clang", "gcc" }
+                tools = {"clang", "gcc"}
             })
         end
     end
     -- fma support
     if is_arch("x64", "x86_64") then
         target:add("cxflags", "-mfma", {
-            tools = { "clang", "gcc" }
+            tools = {"clang", "gcc"}
         })
     end
-    local c_standard = target:values("c_standard")
-    local cxx_standard = target:values("cxx_standard")
+    local c_standard = _get_or("c_standard", nil)
+    local cxx_standard = _get_or("cxx_standard", nil)
     if type(c_standard) == "string" and type(cxx_standard) == "string" then
         target:set("languages", c_standard, cxx_standard, {
             public = true
@@ -231,23 +231,34 @@ on_load(function(target)
         target:set("exceptions", "no-cxx")
     end
 
+    local force_optimize = _get_or("force_optimize", nil)
     if is_mode("debug") then
         target:set("runtimes", _get_or("runtime", "MDd"), {
             public = true
         })
-        target:set("optimize", "none")
+        if force_optimize then
+            target:set("optimize", "aggressive")
+        else
+            target:set("optimize", "none")
+        end
         target:set("warnings", "none")
         target:add("cxflags", "/GS", "/Gd", {
-            tools = { "clang_cl", "cl" }
-        })
-    elseif is_mode("releasedbg") then
-        target:set("runtimes", _get_or("runtime", "MD"), {
+            tools = {"clang_cl", "cl"},
             public = true
         })
-        target:set("optimize", "none")
+    elseif is_mode("releasedbg") then
+        target:set("runtimes", _get_or("runtime", "MDd"), {
+            public = true
+        })
+        if force_optimize then
+            target:set("optimize", "aggressive")
+        else
+            target:set("optimize", "none")
+        end
         target:set("warnings", "none")
         target:add("cxflags", "/GS-", "/Gd", {
-            tools = { "clang_cl", "cl" }
+            tools = {"clang_cl", "cl"},
+            public = true
         })
     else
         target:set("runtimes", _get_or("runtime", "MD"), {
@@ -256,7 +267,8 @@ on_load(function(target)
         target:set("optimize", "aggressive")
         target:set("warnings", "none")
         target:add("cxflags", "/GS-", "/Gd", {
-            tools = { "clang_cl", "cl" }
+            tools = {"clang_cl", "cl"},
+            public = true
         })
     end
     target:set("fpmodels", "fast")
@@ -266,22 +278,26 @@ on_load(function(target)
     });
     if _get_or("use_simd", get_config("enable_simd")) then
         if is_arch("arm64") then
-            target:add("vectorexts", "neon")
+            target:add("vectorexts", "neon", {
+                public = true
+            })
         else
-            target:add("vectorexts", "avx", "avx2")
+            target:add("vectorexts", "avx", "avx2", {
+                public = true
+            })
         end
     end
     if _get_or("no_rtti", not get_config("_lc_enable_py")) then
         target:add("cxflags", "/GR-", {
-            tools = { "clang_cl", "cl" },
+            tools = {"clang_cl", "cl"},
             public = true
         })
         target:add("cxflags", "-fno-rtti", "-fno-rtti-data", {
-            tools = { "clang" },
+            tools = {"clang"},
             public = true
         })
         target:add("cxflags", "-fno-rtti", {
-            tools = { "gcc" },
+            tools = {"gcc"},
             public = true
         })
     end
@@ -368,9 +384,9 @@ on_load(function(target)
         local valid = find_sdk.check_file(lib, sdk_dir)
         if not valid then
             utils.error("Library: " .. packages.sdks()[lib]['name'] ..
-                    " not installed, run 'xmake lua setup.lua' or download it manually from " ..
-                    packages.sdk_address(packages.sdks()[lib]) .. ' to ' .. packages.sdk_dir(os.arch(), sdk_dir) ..
-                    '.')
+                            " not installed, run 'xmake lua setup.lua' or download it manually from " ..
+                            packages.sdk_address(packages.sdks()[lib]) .. ' to ' .. packages.sdk_dir(os.arch(), sdk_dir) ..
+                            '.')
             enable = false
         end
     end
@@ -419,7 +435,7 @@ rule_end()
 
 -- In-case of submod, when there is override rules, do not overload
 if _config_rules == nil then
-    _config_rules = { "lc_basic_settings" }
+    _config_rules = {"lc_basic_settings"}
 end
 if _disable_unity_build == nil then
     local unity_build = get_config("enable_unity_build")
