@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
     // We support multiple ImGui contexts, so if you would like to tweak ImGui settings for
     // a specific window, you can use window.with_context to get a context guard.
     window.with_context([&] {
-        ImGui::StyleColorsClassic();
+        ImGui::StyleColorsDark();
         auto &style = ImGui::GetStyle();
         style.TabRounding = 0.f;
     });

@@ -580,6 +580,21 @@ void FunctionBuilder::_compute_hash() noexcept {
     _hash_computed = true;
 }
 
+luisa::string FunctionBuilder::debug_name() const noexcept {
+    auto tag_str = [this] {
+        using namespace std::string_view_literals;
+        switch (_tag) {
+            case Tag::CALLABLE: return "callable"sv;
+            case Tag::KERNEL: return "kernel"sv;
+            case Tag::RASTER_STAGE: return "raster_stage"sv;
+        }
+        return "unknown"sv;
+    }();
+    return _name.empty() ?
+               luisa::format("{}_{:016x}", tag_str, hash()) :
+               luisa::format("{}_{}_{:016x}", tag_str, _name, hash());
+}
+
 uint64_t FunctionBuilder::hash() const noexcept {
     LUISA_ASSERT(_hash_computed, "Hash not computed.");
     return _hash;
@@ -856,6 +871,16 @@ void FunctionBuilder::set_block_size(uint3 size) noexcept {
             "Setting block size is not valid in Callables. "
             "Ignoring the `set_block_size({}, {}, {})` call.",
             size.x, size.y, size.z);
+    }
+}
+
+void FunctionBuilder::set_name(luisa::string_view name) noexcept {
+    _name = name;
+    // canonicalize the name
+    for (auto &c : _name) {
+        if (!isalnum(c) && c != '_') {
+            c = '_';
+        }
     }
 }
 

@@ -60,6 +60,11 @@ inline void unreachable(luisa::string_view msg) noexcept {
     detail::FunctionBuilder::current()->call(CallOp::UNREACHABLE, {message});
 }
 
+inline ULong device_clock() noexcept {
+    return def<ulong>(detail::FunctionBuilder::current()->call(
+        Type::of<ulong>(), CallOp::CLOCK, {}));
+}
+
 /// Call assert in device code
 inline void device_assert(Expr<bool> pred) noexcept {
     detail::FunctionBuilder::current()->call(
@@ -195,6 +200,10 @@ inline void set_block_size(uint3 size) noexcept {
 
 inline void set_block_size(uint2 size) noexcept {
     set_block_size(size.x, size.y, 1u);
+}
+
+inline void set_name(luisa::string_view name) noexcept {
+    detail::FunctionBuilder::current()->set_name(name);
 }
 
 inline void require_curve_basis(CurveBasis basis) noexcept {

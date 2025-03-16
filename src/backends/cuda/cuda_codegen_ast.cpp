@@ -1060,8 +1060,16 @@ void CUDACodegenAST::visit(const CallExpr *expr) {
         case CallOp::TEXTURE3D_SAMPLE: [[fallthrough]];
         case CallOp::TEXTURE3D_SAMPLE_LEVEL: [[fallthrough]];
         case CallOp::TEXTURE3D_SAMPLE_GRAD: [[fallthrough]];
-        case CallOp::TEXTURE3D_SAMPLE_GRAD_LEVEL:
-            LUISA_NOT_IMPLEMENTED();
+        case CallOp::TEXTURE3D_SAMPLE_GRAD_LEVEL: LUISA_NOT_IMPLEMENTED();
+        case CallOp::BINDLESS_TEXTURE2D_SAMPLE_SAMPLER: LUISA_NOT_IMPLEMENTED();
+        case CallOp::BINDLESS_TEXTURE2D_SAMPLE_LEVEL_SAMPLER: LUISA_NOT_IMPLEMENTED();
+        case CallOp::BINDLESS_TEXTURE2D_SAMPLE_GRAD_SAMPLER: LUISA_NOT_IMPLEMENTED();
+        case CallOp::BINDLESS_TEXTURE2D_SAMPLE_GRAD_LEVEL_SAMPLER: LUISA_NOT_IMPLEMENTED();
+        case CallOp::BINDLESS_TEXTURE3D_SAMPLE_SAMPLER: LUISA_NOT_IMPLEMENTED();
+        case CallOp::BINDLESS_TEXTURE3D_SAMPLE_LEVEL_SAMPLER: LUISA_NOT_IMPLEMENTED();
+        case CallOp::BINDLESS_TEXTURE3D_SAMPLE_GRAD_SAMPLER: LUISA_NOT_IMPLEMENTED();
+        case CallOp::BINDLESS_TEXTURE3D_SAMPLE_GRAD_LEVEL_SAMPLER: LUISA_NOT_IMPLEMENTED();
+        case CallOp::CLOCK: _scratch << "clock64"; break;
     }
     _scratch << "(";
     if (auto op = expr->op(); is_atomic_operation(op)) {

@@ -187,7 +187,7 @@ void CommandQueue::ExecuteEmptyCallbacks(AllocatorPtr &&alloc, vstd::vector<vstd
     waitCv.notify_one();
 }
 
-void CommandQueue::ExecuteAndPresent(AllocatorPtr &&alloc, IDXGISwapChain3 *swapChain, bool vsync) {
+void CommandQueue::ExecuteAndPresent(AllocatorPtr &&alloc, IDXGISwapChain *swapChain, bool vsync) {
     auto curFrame = ++lastFrame;
     alloc->ExecuteAndPresent(this, cmdFence.Get(), curFrame, swapChain, vsync);
     mtx.lock();

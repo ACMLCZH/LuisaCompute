@@ -1,18 +1,5 @@
-#include <iostream>
-#include <chrono>
-#include <numeric>
+#include <luisa/luisa-compute.h>
 
-#include <luisa/core/clock.h>
-#include <luisa/core/fiber.h>
-#include <luisa/core/dynamic_module.h>
-#include <luisa/core/logging.h>
-#include <luisa/runtime/device.h>
-#include <luisa/runtime/stream.h>
-#include <luisa/runtime/context.h>
-#include <luisa/ast/interface.h>
-#include <luisa/dsl/syntax.h>
-
-#include "../backends/common/c_codegen/codegen_utils.h"
 using namespace luisa;
 using namespace luisa::compute;
 

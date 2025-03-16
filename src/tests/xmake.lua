@@ -114,7 +114,13 @@ test_proj("test_game_of_life", true)
 test_proj("test_mpm3d", true)
 test_proj("test_mpm88", true)
 test_proj("test_normal_encoding")
+test_proj("test_win_hdr", true, function()
+    after_build(function(target)
+        os.cp(path.join(os.scriptdir(), "genshin_start.jpg"), path.join(target:targetdir(), "genshin_start.jpg"))
+    end)
+end)
 test_proj("test_path_tracing", true)
+test_proj("test_path_tracing_hdr", true)
 test_proj("test_path_tracing_camera", true)
 test_proj("test_path_tracing_cutout", true)
 test_proj("test_photon_mapping", true)
@@ -148,10 +154,14 @@ test_proj("test_imgui", true, function()
     add_deps("imgui")
 end)
 test_proj("test_zip", false, function()
-    add_packages("zlib", {
-        public = false,
-        inherit = false
-    })
+    if get_config("lc_xrepo_dir") then
+        add_packages("zlib", {
+            public = false,
+            inherit = false
+        })
+    else
+        add_deps("zlib")
+    end
 end)
 if get_config("dx_backend") then
     test_proj("test_raster", true)

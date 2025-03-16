@@ -612,6 +612,7 @@ public:
     [[nodiscard]] auto request() const noexcept { return _request; }
     [[nodiscard]] auto instance_count() const noexcept { return _instance_count; }
     [[nodiscard]] auto modifications() const noexcept { return luisa::span{_modifications}; }
+    [[nodiscard]] auto steal_modifications() noexcept { return std::move(_modifications); }
     [[nodiscard]] auto update_instance_buffer_only() const noexcept { return _update_instance_buffer_only; }
     LUISA_MAKE_COMMAND_COMMON(StreamTag::COMPUTE)
 };

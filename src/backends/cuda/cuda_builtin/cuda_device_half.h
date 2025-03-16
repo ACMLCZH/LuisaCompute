@@ -1237,66 +1237,6 @@ __device__ __half2 __hmin2(const __half2 a, const __half2 b) {
         return val;
     }
 }
-__device__ __half2 __shfl(const __half2 var, const int delta, const int width) {
-    unsigned int warp_size;
-    asm("{mov.u32 %0, WARP_SZ;\n}"
-        : "=r"(warp_size));
-    const unsigned int c = ((warp_size - static_cast<unsigned>(width)) << 8U) | 0x1fU;
-    {
-        __half2 r;
-        asm volatile("{"
-                     "shfl.idx.b32"
-                     " %0,%1,%2,%3;\n}"
-                     : "=r"(*(reinterpret_cast<unsigned int *>(&(r))))
-                     : "r"(*(reinterpret_cast<const unsigned int *>(&(var)))), "r"(delta), "r"(c));
-        return r;
-    }
-}
-__device__ __half2 __shfl_up(const __half2 var, const unsigned int delta, const int width) {
-    unsigned int warp_size;
-    asm("{mov.u32 %0, WARP_SZ;\n}"
-        : "=r"(warp_size));
-    const unsigned int c = (warp_size - static_cast<unsigned>(width)) << 8U;
-    {
-        __half2 r;
-        asm volatile("{"
-                     "shfl.up.b32"
-                     " %0,%1,%2,%3;\n}"
-                     : "=r"(*(reinterpret_cast<unsigned int *>(&(r))))
-                     : "r"(*(reinterpret_cast<const unsigned int *>(&(var)))), "r"(delta), "r"(c));
-        return r;
-    }
-}
-__device__ __half2 __shfl_down(const __half2 var, const unsigned int delta, const int width) {
-    unsigned int warp_size;
-    asm("{mov.u32 %0, WARP_SZ;\n}"
-        : "=r"(warp_size));
-    const unsigned int c = ((warp_size - static_cast<unsigned>(width)) << 8U) | 0x1fU;
-    {
-        __half2 r;
-        asm volatile("{"
-                     "shfl.down.b32"
-                     " %0,%1,%2,%3;\n}"
-                     : "=r"(*(reinterpret_cast<unsigned int *>(&(r))))
-                     : "r"(*(reinterpret_cast<const unsigned int *>(&(var)))), "r"(delta), "r"(c));
-        return r;
-    }
-}
-__device__ __half2 __shfl_xor(const __half2 var, const int delta, const int width) {
-    unsigned int warp_size;
-    asm("{mov.u32 %0, WARP_SZ;\n}"
-        : "=r"(warp_size));
-    const unsigned int c = ((warp_size - static_cast<unsigned>(width)) << 8U) | 0x1fU;
-    {
-        __half2 r;
-        asm volatile("{"
-                     "shfl.bfly.b32"
-                     " %0,%1,%2,%3;\n}"
-                     : "=r"(*(reinterpret_cast<unsigned int *>(&(r))))
-                     : "r"(*(reinterpret_cast<const unsigned int *>(&(var)))), "r"(delta), "r"(c));
-        return r;
-    }
-}
 __device__ __half2 __shfl_sync(const unsigned mask, const __half2 var, const int delta, const int width) {
     unsigned int warp_size;
     asm("{mov.u32 %0, WARP_SZ;\n}"
@@ -1356,26 +1296,6 @@ __device__ __half2 __shfl_xor_sync(const unsigned mask, const __half2 var, const
                      : "r"(*(reinterpret_cast<const unsigned int *>(&(var)))), "r"(delta), "r"(c), "r"(mask));
         return r;
     }
-}
-__device__ __half __shfl(const __half var, const int delta, const int width) {
-    const __half2 temp1 = __halves2half2(var, var);
-    const __half2 temp2 = __shfl(temp1, delta, width);
-    return __low2half(temp2);
-}
-__device__ __half __shfl_up(const __half var, const unsigned int delta, const int width) {
-    const __half2 temp1 = __halves2half2(var, var);
-    const __half2 temp2 = __shfl_up(temp1, delta, width);
-    return __low2half(temp2);
-}
-__device__ __half __shfl_down(const __half var, const unsigned int delta, const int width) {
-    const __half2 temp1 = __halves2half2(var, var);
-    const __half2 temp2 = __shfl_down(temp1, delta, width);
-    return __low2half(temp2);
-}
-__device__ __half __shfl_xor(const __half var, const int delta, const int width) {
-    const __half2 temp1 = __halves2half2(var, var);
-    const __half2 temp2 = __shfl_xor(temp1, delta, width);
-    return __low2half(temp2);
 }
 __device__ __half __shfl_sync(const unsigned mask, const __half var, const int delta, const int width) {
     const __half2 temp1 = __halves2half2(var, var);

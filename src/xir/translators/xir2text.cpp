@@ -4,29 +4,39 @@
 #include <luisa/core/string_scratch.h>
 #include <luisa/ast/type.h>
 #include <luisa/xir/constant.h>
+#include <luisa/xir/special_register.h>
+#include <luisa/xir/undefined.h>
 #include <luisa/xir/instructions/alloca.h>
+#include <luisa/xir/instructions/arithmetic.h>
 #include <luisa/xir/instructions/assert.h>
+#include <luisa/xir/instructions/assume.h>
+#include <luisa/xir/instructions/atomic.h>
 #include <luisa/xir/instructions/branch.h>
 #include <luisa/xir/instructions/if.h>
 #include <luisa/xir/instructions/break.h>
 #include <luisa/xir/instructions/call.h>
 #include <luisa/xir/instructions/cast.h>
+#include <luisa/xir/instructions/clock.h>
 #include <luisa/xir/instructions/continue.h>
 #include <luisa/xir/instructions/gep.h>
-#include <luisa/xir/instructions/intrinsic.h>
+#include <luisa/xir/instructions/autodiff.h>
 #include <luisa/xir/instructions/load.h>
 #include <luisa/xir/instructions/loop.h>
 #include <luisa/xir/instructions/outline.h>
 #include <luisa/xir/instructions/phi.h>
 #include <luisa/xir/instructions/print.h>
 #include <luisa/xir/instructions/ray_query.h>
+#include <luisa/xir/instructions/raster_discard.h>
 #include <luisa/xir/instructions/return.h>
+#include <luisa/xir/instructions/resource.h>
 #include <luisa/xir/instructions/store.h>
 #include <luisa/xir/instructions/switch.h>
+#include <luisa/xir/instructions/thread_group.h>
 #include <luisa/xir/instructions/unreachable.h>
 #include <luisa/xir/metadata/comment.h>
 #include <luisa/xir/metadata/location.h>
 #include <luisa/xir/metadata/name.h>
+#include <luisa/xir/passes/dom_tree.h>
 #include <luisa/xir/translators/xir2text.h>
 
 namespace luisa::compute::xir {
@@ -49,6 +59,14 @@ private:
 
     [[nodiscard]] auto _value_ident(const Value *value) noexcept {
         auto uid = _value_uid(value);
+        if (value->isa<SpecialRegister>()) {
+            auto r = static_cast<const SpecialRegister *>(value);
+            auto name = xir::to_string(r->derived_special_register_tag());
+            return luisa::format("%{}.{}", uid, name);
+        }
+        if (value->isa<Undefined>()) {
+            return luisa::format("%{}.undefined", uid);
+        }
         return luisa::format("%{}", uid);
     }
 
@@ -56,6 +74,9 @@ private:
         LUISA_ASSERT(type != nullptr, "Type must not be null.");
         // custom
         if (type->is_custom()) {
+            if (auto iter = _struct_uid_map.find(type); iter != _struct_uid_map.end()) {
+                return iter->second;
+            }
             auto next_uid = static_cast<uint>(_struct_uid_map.size());
             _prelude << "type T" << next_uid << " = opaque \"" << type->description() << "\";\n\n";
             _struct_uid_map.emplace(type, next_uid);
@@ -78,6 +99,44 @@ private:
         _prelude << "type T" << next_uid << " = struct { " << desc << " };\n\n";
         _struct_uid_map.emplace(type, next_uid);
         return next_uid;
+    }
+
+    void _traverse_value_in_instruction(const Instruction *inst) noexcept {
+        static_cast<void>(_value_uid(inst));
+        for (auto &use : inst->operand_uses()) {
+            if (auto value = use->value();
+                value != nullptr && value->isa<BasicBlock>()) {
+                _traverse_values_in_basic_block(static_cast<const BasicBlock *>(value));
+            }
+        }
+    }
+
+    void _traverse_values_in_basic_block(const BasicBlock *bb) noexcept {
+        if (!_value_uid_map.contains(bb)) {// to avoid infinite recursion in loops
+            static_cast<void>(_value_uid(bb));
+            for (auto &inst : bb->instructions()) {
+                _traverse_value_in_instruction(&inst);
+            }
+        }
+    }
+
+    void _traverse_values_in_function(const Function *f) noexcept {
+        for (auto arg : f->arguments()) {
+            static_cast<void>(_value_uid(arg));
+        }
+        if (auto definition = f->definition()) {
+            _traverse_values_in_basic_block(definition->body_block());
+        }
+    }
+
+    void _traverse_values_in_module(const Module *module) noexcept {
+        for (auto &c : module->constant_list()) {
+            static_cast<void>(_value_uid(&c));
+        }
+        for (auto &f : module->function_list()) {
+            static_cast<void>(_value_uid(&f));
+            _traverse_values_in_function(&f);
+        }
     }
 
     [[nodiscard]] luisa::string _type_ident(const Type *type) noexcept {
@@ -118,6 +177,21 @@ private:
             for (auto &&u : uses) {
                 ss << " " << _value_ident(u.user());
             }
+        }
+    }
+
+    void _emit_basic_block_use_and_pred_debug_info(StringScratch &ss, const BasicBlock *bb) noexcept {
+        _emit_use_debug_info(ss, bb->use_list());
+        if (_debug_info) {
+            if (bb->use_list().empty()) {
+                ss << "// ";
+            } else {
+                ss << ", ";
+            }
+            ss << "preds:";
+            bb->traverse_predecessors(false, [&](const BasicBlock *pred) noexcept {
+                ss << " " << _value_ident(pred);
+            });
         }
     }
 
@@ -193,6 +267,19 @@ private:
         _main << " " << _value_ident(inst->condition());
     }
 
+    void _emit_assume_inst(const AssumeInst *inst) noexcept {
+        _main << "assume";
+        if (!inst->message().empty()) {
+            _main << " ";
+            _emit_string_escaped(_main, inst->message());
+        }
+        _main << " " << _value_ident(inst->condition());
+    }
+
+    void _emit_clock_inst(const ClockInst *inst [[maybe_unused]]) noexcept {
+        _main << "clock";
+    }
+
     void _emit_if_inst(const IfInst *inst, int indent) noexcept {
         _main << "if " << _value_ident(inst->condition()) << ", then ";
         _emit_basic_block(inst->true_block(), indent);
@@ -240,13 +327,35 @@ private:
         _emit_basic_block(inst->merge_block(), indent);
     }
 
-    void _emit_ray_query_inst(const RayQueryInst *inst, int indent) noexcept {
-        _main << "ray_query " << _value_ident(inst->query_object()) << ", on_surface_candidate ";
+    void _emit_ray_query_dispatch_inst(const RayQueryDispatchInst *inst, int indent) noexcept {
+        _main << "ray_query_dispatch " << _value_ident(inst->query_object())
+              << ", exit " << _value_ident(inst->exit_block())
+              << ", on_surface_candidate ";
         _emit_basic_block(inst->on_surface_candidate_block(), indent);
         _main << ", on_procedural_candidate ";
         _emit_basic_block(inst->on_procedural_candidate_block(), indent);
+    }
+
+    void _emit_ray_query_loop_inst(const RayQueryLoopInst *inst, int indent) noexcept {
+        _main << "ray_query_loop dispatch ";
+        _emit_basic_block(inst->dispatch_block(), indent);
         _main << ", merge ";
         _emit_basic_block(inst->merge_block(), indent);
+    }
+
+    void _emit_ray_query_object_read_inst(const RayQueryObjectReadInst *inst) noexcept {
+        _main << "ray_query_object_read " << xir::to_string(inst->op()) << " ";
+        _emit_operands(inst);
+    }
+
+    void _emit_ray_query_object_write_inst(const RayQueryObjectWriteInst *inst) noexcept {
+        _main << "ray_query_object_write " << xir::to_string(inst->op()) << " ";
+        _emit_operands(inst);
+    }
+
+    void _emit_ray_query_pipeline_inst(const RayQueryPipelineInst *inst) noexcept {
+        _main << "ray_query_pipeline ";
+        _emit_operands(inst);
     }
 
     void _emit_return_inst(const ReturnInst *inst) noexcept {
@@ -255,6 +364,10 @@ private:
         } else {
             _main << "return";
         }
+    }
+
+    void _emit_raster_discard_inst(const RasterDiscardInst *inst [[maybe_unused]]) noexcept {
+        _main << "raster_discard";
     }
 
     void _emit_phi_inst(const PhiInst *inst) noexcept {
@@ -290,12 +403,22 @@ private:
         _emit_operands(inst);
     }
 
+    void _emit_atomic_inst(const AtomicInst *inst) noexcept {
+        _main << "atomic " << xir::to_string(inst->op()) << " ";
+        _emit_operands(inst);
+    }
+
+    void _emit_thread_group_inst(const ThreadGroupInst *inst) noexcept {
+        _main << "thread_group " << xir::to_string(inst->op()) << " ";
+        _emit_operands(inst);
+    }
+
     void _emit_call_inst(const CallInst *inst) noexcept {
         _main << "call ";
         _emit_operands(inst);
     }
 
-    void _emit_intrinsic_inst(const IntrinsicInst *inst) noexcept {
+    void _emit_autodiff_intrinsic_inst(const AutodiffIntrinsicInst *inst) noexcept {
         _main << "@" << to_string(inst->op());
         if (!inst->operand_uses().empty()) {
             _main << " ";
@@ -304,11 +427,8 @@ private:
     }
 
     void _emit_cast_inst(const CastInst *inst) noexcept {
-        _main << "cast ";
-        switch (inst->op()) {
-            case CastOp::STATIC_CAST: _main << "static"; break;
-            case CastOp::BITWISE_CAST: _main << "bitwise"; break;
-        }
+        _main << "cast " << xir::to_string(inst->op()) << " ";
+        _emit_operands(inst);
     }
 
     void _emit_print_inst(const PrintInst *inst) noexcept {
@@ -322,6 +442,26 @@ private:
         LUISA_DEBUG_ASSERT(inst->target_block() != nullptr,
                            "Branch target block must not be null.");
         _main << "br " << _value_ident(inst->target_block());
+    }
+
+    void _emit_arithmetic_inst(const ArithmeticInst *inst) noexcept {
+        _main << "arithmetic " << xir::to_string(inst->op()) << " ";
+        _emit_operands(inst);
+    }
+
+    void _emit_resource_query_inst(const ResourceQueryInst *inst) noexcept {
+        _main << "resource_query " << xir::to_string(inst->op()) << " ";
+        _emit_operands(inst);
+    }
+
+    void _emit_resource_read_inst(const ResourceReadInst *inst) noexcept {
+        _main << "resource_read " << xir::to_string(inst->op()) << " ";
+        _emit_operands(inst);
+    }
+
+    void _emit_resource_write_inst(const ResourceWriteInst *inst) noexcept {
+        _main << "resource_write " << xir::to_string(inst->op()) << " ";
+        _emit_operands(inst);
     }
 
     void _emit_conditional_branch_inst(const ConditionalBranchInst *inst) noexcept {
@@ -342,8 +482,6 @@ private:
         _emit_indent(indent);
         _main << _value_ident(inst) << ": " << _type_ident(inst->type()) << " = ";
         switch (inst->derived_instruction_tag()) {
-            case DerivedInstructionTag::SENTINEL:
-                LUISA_ERROR_WITH_LOCATION("Unexpected sentinel instruction.");
             case DerivedInstructionTag::UNREACHABLE:
                 _emit_unreachable_inst(static_cast<const UnreachableInst *>(inst));
                 break;
@@ -368,6 +506,9 @@ private:
             case DerivedInstructionTag::RETURN:
                 _emit_return_inst(static_cast<const ReturnInst *>(inst));
                 break;
+            case DerivedInstructionTag::RASTER_DISCARD:
+                _emit_raster_discard_inst(static_cast<const RasterDiscardInst *>(inst));
+                break;
             case DerivedInstructionTag::PHI:
                 _emit_phi_inst(static_cast<const PhiInst *>(inst));
                 break;
@@ -386,9 +527,6 @@ private:
             case DerivedInstructionTag::CALL:
                 _emit_call_inst(static_cast<const CallInst *>(inst));
                 break;
-            case DerivedInstructionTag::INTRINSIC:
-                _emit_intrinsic_inst(static_cast<const IntrinsicInst *>(inst));
-                break;
             case DerivedInstructionTag::CAST:
                 _emit_cast_inst(static_cast<const CastInst *>(inst));
                 break;
@@ -398,9 +536,24 @@ private:
             case DerivedInstructionTag::OUTLINE:
                 _emit_outline_inst(static_cast<const OutlineInst *>(inst), indent);
                 break;
-            case DerivedInstructionTag::AUTO_DIFF: LUISA_NOT_IMPLEMENTED();
-            case DerivedInstructionTag::RAY_QUERY:
-                _emit_ray_query_inst(static_cast<const RayQueryInst *>(inst), indent);
+            case DerivedInstructionTag::AUTODIFF_SCOPE: LUISA_NOT_IMPLEMENTED();
+            case DerivedInstructionTag::AUTODIFF_INTRINSIC:
+                _emit_autodiff_intrinsic_inst(static_cast<const AutodiffIntrinsicInst *>(inst));
+                break;
+            case DerivedInstructionTag::RAY_QUERY_LOOP:
+                _emit_ray_query_loop_inst(static_cast<const RayQueryLoopInst *>(inst), indent);
+                break;
+            case DerivedInstructionTag::RAY_QUERY_DISPATCH:
+                _emit_ray_query_dispatch_inst(static_cast<const RayQueryDispatchInst *>(inst), indent);
+                break;
+            case DerivedInstructionTag::RAY_QUERY_OBJECT_READ:
+                _emit_ray_query_object_read_inst(static_cast<const RayQueryObjectReadInst *>(inst));
+                break;
+            case DerivedInstructionTag::RAY_QUERY_OBJECT_WRITE:
+                _emit_ray_query_object_write_inst(static_cast<const RayQueryObjectWriteInst *>(inst));
+                break;
+            case DerivedInstructionTag::RAY_QUERY_PIPELINE:
+                _emit_ray_query_pipeline_inst(static_cast<const RayQueryPipelineInst *>(inst));
                 break;
             case DerivedInstructionTag::BRANCH:
                 _emit_branch_inst(static_cast<const BranchInst *>(inst));
@@ -410,6 +563,30 @@ private:
                 break;
             case DerivedInstructionTag::ASSERT:
                 _emit_assert_inst(static_cast<const AssertInst *>(inst));
+                break;
+            case DerivedInstructionTag::ASSUME:
+                _emit_assume_inst(static_cast<const AssumeInst *>(inst));
+                break;
+            case DerivedInstructionTag::CLOCK:
+                _emit_clock_inst(static_cast<const ClockInst *>(inst));
+                break;
+            case DerivedInstructionTag::ATOMIC:
+                _emit_atomic_inst(static_cast<const AtomicInst *>(inst));
+                break;
+            case DerivedInstructionTag::THREAD_GROUP:
+                _emit_thread_group_inst(static_cast<const ThreadGroupInst *>(inst));
+                break;
+            case DerivedInstructionTag::ARITHMETIC:
+                _emit_arithmetic_inst(static_cast<const ArithmeticInst *>(inst));
+                break;
+            case DerivedInstructionTag::RESOURCE_QUERY:
+                _emit_resource_query_inst(static_cast<const ResourceQueryInst *>(inst));
+                break;
+            case DerivedInstructionTag::RESOURCE_READ:
+                _emit_resource_read_inst(static_cast<const ResourceReadInst *>(inst));
+                break;
+            case DerivedInstructionTag::RESOURCE_WRITE:
+                _emit_resource_write_inst(static_cast<const ResourceWriteInst *>(inst));
                 break;
         }
         _main << ";";
@@ -426,7 +603,7 @@ private:
                 _main << " ";
             }
             _main << _value_ident(b) << ": {";
-            _emit_use_debug_info(_main, b->use_list());
+            _emit_basic_block_use_and_pred_debug_info(_main, b);
             _main << "\n";
             for (auto &&inst : b->instructions()) {
                 _emit_instruction(&inst, indent + 1);
@@ -457,7 +634,7 @@ private:
             }
             _emit_indent(1);
             _main << _value_ident(arg) << ": ";
-            if (arg->derived_argument_tag() == DerivedArgumentTag::REFERENCE) {
+            if (arg->isa<ReferenceArgument>()) {
                 _main << "&";
             }
             _main << _type_ident(arg->type()) << ";";
@@ -465,24 +642,130 @@ private:
             _main << "\n";
         }
         _main << ")";
-        if (f->derived_function_tag() != DerivedFunctionTag::EXTERNAL) {
+        if (auto definition = f->definition()) {
             _main << " = define ";
-            auto def = static_cast<const FunctionDefinition *>(f);
-            _emit_basic_block(def->body_block(), 0);
+            _emit_basic_block(definition->body_block(), 0);
         }
         _main << ";";
         _emit_use_debug_info(_main, f->use_list());
         _main << "\n\n";
+        if (auto definition = f->definition();
+            definition != nullptr && _debug_info) {
+            _emit_control_flow_graph_debug_info(
+                const_cast<FunctionDefinition *>(definition));
+        }
+    }
+
+    void _emit_control_flow_graph_debug_info(FunctionDefinition *f) noexcept {
+        // CFG Nodes
+        _main << R"(// CFG = {"function": ")" << _value_ident(f) << "\", ";
+        {
+            _main << "\"nodes\": [";
+            f->traverse_basic_blocks([&](auto block) noexcept {
+                _main << "\"" << _value_ident(block) << "\", ";
+            });
+            _main.pop_back();
+            _main.pop_back();
+            _main << "], ";
+        }
+        // CFG Edges
+        {
+            _main << "\"edges\": {";
+            f->traverse_basic_blocks([&](auto block) noexcept {
+                _main << "\"" << _value_ident(block) << "\": [";
+                bool any_succ = false;
+                block->traverse_successors(false, [&](auto succ) noexcept {
+                    any_succ = true;
+                    _main << "\"" << _value_ident(succ) << "\", ";
+                });
+                if (any_succ) {
+                    _main.pop_back();
+                    _main.pop_back();
+                }
+                _main << "], ";
+            });
+            _main.pop_back();
+            _main.pop_back();
+            _main << "}, ";
+        }
+        // CFG Terminators
+        {
+            _main << "\"terminators\": {";
+            f->traverse_basic_blocks([&](auto block) noexcept {
+                _main << "\"" << _value_ident(block) << "\": ";
+                if (auto term = block->terminator()) {
+                    _main << "\"" << xir::to_string(term->derived_instruction_tag()) << "\", ";
+                }
+            });
+            _main.pop_back();
+            _main.pop_back();
+            _main << "}, ";
+        }
+        // CFG Control Merges
+        {
+            _main << "\"merges\": {";
+            auto any_merge = false;
+            f->traverse_basic_blocks([&](auto block) noexcept {
+                auto terminator = block->terminator();
+                if (auto merge = terminator->control_flow_merge();
+                    merge != nullptr && merge->merge_block() != nullptr) {
+                    any_merge = true;
+                    _main << "\"" << _value_ident(block) << "\": \""
+                          << _value_ident(merge->merge_block()) << "\", ";
+                }
+            });
+            if (any_merge) {
+                _main.pop_back();
+                _main.pop_back();
+            }
+            _main << "}, ";
+        }
+        // Dominance Tree
+        {
+            auto dom_tree = compute_dom_tree(f);
+            _main << "\"dominance_tree\": {";
+            for (auto &&[b, node] : dom_tree.nodes()) {
+                _main << "\"" << _value_ident(b) << "\": [";
+                for (auto &&child : node->children()) {
+                    _main << "\"" << _value_ident(child->block()) << "\", ";
+                }
+                if (!node->children().empty()) {
+                    _main.pop_back();
+                    _main.pop_back();
+                }
+                _main << "], ";
+            }
+            _main.pop_back();
+            _main.pop_back();
+            // Dominance Frontiers
+            _main << "}, \"dominance_frontiers\": {";
+            for (auto &&[b, node] : dom_tree.nodes()) {
+                _main << "\"" << _value_ident(b) << "\": [";
+                for (auto &&frontier : node->frontiers()) {
+                    _main << "\"" << _value_ident(frontier->block()) << "\", ";
+                }
+                if (!node->frontiers().empty()) {
+                    _main.pop_back();
+                    _main.pop_back();
+                }
+                _main << "], ";
+            }
+            _main.pop_back();
+            _main.pop_back();
+            _main << "}";
+        }
+        _main << "}\n\n";
     }
 
     void _emit_module(const Module *module) noexcept {
+        _traverse_values_in_module(module);
         if (!module->metadata_list().empty()) {
             _emit_metadata_list(_prelude, module->metadata_list());
             _prelude << "\n";
         }
         _prelude << "module;\n\n";// TODO: metadata
-        for (auto &c : module->constants()) { _emit_constant(&c); }
-        for (auto &f : module->functions()) { _emit_function(&f); }
+        for (auto &c : module->constant_list()) { _emit_constant(&c); }
+        for (auto &f : module->function_list()) { _emit_function(&f); }
     }
 
     static void _emit_name_metadata(StringScratch &s, const NameMD &m) noexcept {
@@ -500,7 +783,8 @@ private:
         _emit_string_escaped(s, m.comment());
     }
 
-    static void _emit_metadata_list(StringScratch &s, const MetadataList &m) noexcept {
+    template<typename T>
+    static void _emit_metadata_list(StringScratch &s, const T &m) noexcept {
         s << "[";
         for (auto &item : m) {
             switch (item.derived_metadata_tag()) {
@@ -526,6 +810,7 @@ private:
 
 public:
     XIR2TextTranslator() noexcept : _prelude{1_k}, _main{4_k} {}
+
     [[nodiscard]] luisa::string emit(const Module *module, bool debug_info) noexcept {
         _prelude.clear();
         _main.clear();

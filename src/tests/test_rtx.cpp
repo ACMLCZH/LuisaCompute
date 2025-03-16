@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
 
     auto colorspace_shader = device.compile(colorspace_kernel);
     auto raytracing_shader = device.compile(raytracing_kernel);
-    auto set_transform_shader = device.compile(set_transform_kernel);
+    auto set_transform_shader = device.compile(set_transform_kernel, {.name = "set_transforms"});
 
     static constexpr uint width = 512u;
     static constexpr uint height = 512u;

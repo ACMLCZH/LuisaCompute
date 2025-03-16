@@ -14,6 +14,7 @@
 #include <luisa/core/stl/functional.h>
 #include <luisa/core/magic_enum.h>
 #include <luisa/rust/api_types.h>
+#include <iostream>
 
 namespace luisa {
 
@@ -79,8 +80,19 @@ static luisa::logger LOGGER = [] {
 }
 
 LC_CORE_API void set_sink(spdlog::sink_ptr sink) noexcept {
+    default_logger_set_sink(std::move(sink));
+}
+
+LC_CORE_API void default_logger_set_sink(spdlog::sink_ptr sink) noexcept {
     std::lock_guard _lock{LOGGER_MUTEX};
     LOGGER.sinks().clear();
+    if (sink) {
+        LOGGER.sinks().emplace_back(std::move(sink));
+    }
+}
+
+LC_CORE_API void default_logger_add_sink(spdlog::sink_ptr sink) noexcept {
+    std::lock_guard _lock{LOGGER_MUTEX};
     if (sink) {
         LOGGER.sinks().emplace_back(std::move(sink));
     }

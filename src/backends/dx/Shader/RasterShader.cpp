@@ -7,7 +7,14 @@
 #include <luisa/core/logging.h>
 namespace lc::dx {
 namespace RasterShaderDetail {
-static constexpr bool PRINT_CODE = false;
+static const bool PRINT_CODE = ([] {
+    // read env LUISA_DUMP_SOURCE
+    auto env = std::getenv("LUISA_DUMP_SOURCE");
+    if (env == nullptr) {
+        return false;
+    }
+    return std::string_view{env} == "1";
+})();
 static vstd::vector<SavedArgument> GetKernelArgs(Function vertexKernel, Function pixelKernel) {
     if (vertexKernel.builder() == nullptr || pixelKernel.builder() == nullptr) {
         return {};
@@ -278,7 +285,7 @@ RasterShader *RasterShader::CompileRaster(
         if (str.useBufferBindless) bdlsBufferCount++;
         if (str.useTex2DBindless) bdlsBufferCount++;
         if (str.useTex3DBindless) bdlsBufferCount++;
-        if constexpr (RasterShaderDetail::PRINT_CODE) {
+        if (RasterShaderDetail::PRINT_CODE) {
             auto f = fopen("hlsl_output.hlsl", "wb");
             fwrite(str.result.data(), str.result.size(), 1, f);
             fclose(f);
@@ -349,7 +356,7 @@ void RasterShader::SaveRaster(
     Function pixelKernel,
     uint shaderModel,
     bool enableUnsafeMath) {
-    if constexpr (RasterShaderDetail::PRINT_CODE) {
+    if (RasterShaderDetail::PRINT_CODE) {
         auto f = fopen("hlsl_output.hlsl", "ab");
         fwrite(str.result.data(), str.result.size(), 1, f);
         fclose(f);

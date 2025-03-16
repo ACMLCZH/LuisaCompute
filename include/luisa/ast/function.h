@@ -127,6 +127,10 @@ public:
     [[nodiscard]] CallOpSet propagated_builtin_callables() const noexcept;
     /// Return block size
     [[nodiscard]] uint3 block_size() const noexcept;
+    /// Return name
+    [[nodiscard]] luisa::string_view name() const noexcept;
+    /// Return debug name
+    [[nodiscard]] luisa::string debug_name() const noexcept;
     /// Return function tag
     [[nodiscard]] Tag tag() const noexcept;
     /// Return return type

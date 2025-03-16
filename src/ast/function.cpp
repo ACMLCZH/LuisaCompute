@@ -77,6 +77,14 @@ uint3 Function::block_size() const noexcept {
     return _builder->block_size();
 }
 
+luisa::string_view Function::name() const noexcept {
+    return _builder->name();
+}
+
+luisa::string Function::debug_name() const noexcept {
+    return _builder->debug_name();
+}
+
 bool Function::hash_computed() const noexcept {
     return _builder->hash_computed();
 }

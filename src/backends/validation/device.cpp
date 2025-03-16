@@ -16,6 +16,7 @@
 #include "raster_ext_impl.h"
 #include "dstorage_ext_impl.h"
 #include "pinned_mem_impl.h"
+#include "dx_hdr_ext_impl.h"
 #include "native_res_ext_impl.h"
 #include <luisa/core/logging.h>
 #include <luisa/runtime/rhi/command.h>
@@ -33,6 +34,18 @@ Device::Device(Context &&ctx, luisa::shared_ptr<DeviceInterface> &&native) noexc
     auto dstorage_ext = static_cast<DStorageExt *>(_native->extension(DStorageExt::name));
     auto pinned_ext = static_cast<PinnedMemoryExt *>(_native->extension(PinnedMemoryExt::name));
     auto native_res_ext = static_cast<NativeResourceExt *>(_native->extension(NativeResourceExt::name));
+    auto dx_hdr_ext = static_cast<DXHDRExt *>(_native->extension(DXHDRExt::name));
+    if (dx_hdr_ext) {
+        auto impl = new DXHDRExtImpl(dx_hdr_ext);
+        exts.try_emplace(
+            DXHDRExt::name,
+            ExtPtr{
+                impl,
+                detail::ext_deleter<DeviceExtension>{
+                    [](DeviceExtension *ptr) {
+                        delete static_cast<DXHDRExtImpl *>(ptr);
+                    }}});
+    }
     if (raster_ext) {
         auto raster_impl = new RasterExtImpl(raster_ext);
         exts.try_emplace(

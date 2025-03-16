@@ -74,13 +74,30 @@ void Stream::check_compete() {
                         detail::usage_name(iter.second.usage),
                         get_name());
                 } else {
-                    LUISA_WARNING(
-                        "Simultaneous-accessible resource {} is used to be {} by {} and {} by {} simultaneously.",
-                        res->get_name(),
-                        detail::usage_name(stream_iter.second.usage),
-                        other_stream->get_name(),
-                        detail::usage_name(iter.second.usage),
-                        get_name());
+                    switch (res->tag()) {
+                        case Resource::Tag::BUFFER:
+                        case Resource::Tag::TEXTURE:
+                        case Resource::Tag::BINDLESS_ARRAY:
+                        case Resource::Tag::MESH:
+                        case Resource::Tag::CURVE:
+                        case Resource::Tag::PROCEDURAL_PRIMITIVE:
+                        case Resource::Tag::MOTION_INSTANCE:
+                        case Resource::Tag::ACCEL:
+                        case Resource::Tag::SWAP_CHAIN:
+                        case Resource::Tag::DEPTH_BUFFER:
+                        case Resource::Tag::SPARSE_BUFFER:
+                        case Resource::Tag::SPARSE_TEXTURE:
+                        case Resource::Tag::SPARSE_BUFFER_HEAP:
+                        case Resource::Tag::SPARSE_TEXTURE_HEAP:
+                            LUISA_WARNING(
+                                "Simultaneous-accessible resource {} is used to be {} by {} and {} by {} simultaneously.",
+                                res->get_name(),
+                                detail::usage_name(stream_iter.second.usage),
+                                other_stream->get_name(),
+                                detail::usage_name(iter.second.usage),
+                                get_name());
+                            break;
+                    }
                 }
             }
         }

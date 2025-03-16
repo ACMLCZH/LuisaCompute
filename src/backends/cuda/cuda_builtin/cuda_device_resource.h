@@ -1,5 +1,3 @@
-#pragma once
-
 [[nodiscard]] __device__ constexpr auto lc_infinity_half() noexcept { return __ushort_as_half(static_cast<unsigned short>(0x7c00u)); }
 [[nodiscard]] __device__ constexpr auto lc_infinity_float() noexcept { return __int_as_float(0x7f800000u); }
 [[nodiscard]] __device__ constexpr auto lc_infinity_double() noexcept { return __longlong_as_double(0x7ff0000000000000ull); }
@@ -1072,9 +1070,6 @@ template<typename T>
     lc_assume(__isGlobal(array.slots));
     auto buffer = static_cast<const T *>(array.slots[index].buffer);
     lc_assume(__isGlobal(buffer));
-#ifdef LUISA_DEBUG
-    lc_check_in_bounds(i, lc_bindless_buffer_size<T>(array, index));
-#endif
     return buffer;
 }
 
@@ -1090,7 +1085,7 @@ template<typename T>
 }
 
 template<typename T>
-[[nodiscard]] __device__ void lc_bindless_buffer_write(LCBindlessArray array, lc_uint index, lc_ulong i, T value) noexcept {
+__device__ void lc_bindless_buffer_write(LCBindlessArray array, lc_uint index, lc_ulong i, T value) noexcept {
     lc_assume(__isGlobal(array.slots));
     auto buffer = static_cast<T *>(array.slots[index].buffer);
     lc_assume(__isGlobal(buffer));

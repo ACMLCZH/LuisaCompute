@@ -149,7 +149,7 @@ SwapchainCreationInfo DxNativeResourceExt::register_external_swapchain(
     auto res = new LCSwapChain(
         info.storage,
         dx_device,
-        reinterpret_cast<IDXGISwapChain3 *>(swapchain_ptr),
+        reinterpret_cast<IDXGISwapChain1 *>(swapchain_ptr),
         vsync);
     info.handle = reinterpret_cast<uint64_t>(res);
     info.native_handle = swapchain_ptr;

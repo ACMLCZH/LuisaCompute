@@ -16,10 +16,10 @@ class BasicBlock;
 // { merge_block }
 //
 // Note: this instruction must be the terminator of a basic block.
-class IfInst final : public DerivedConditionalBranchInstruction<DerivedInstructionTag::IF>,
-                     public InstructionMergeMixin {
+class LC_XIR_API IfInst final : public ControlFlowMergeMixin<DerivedConditionalBranchInstruction<IfInst, DerivedInstructionTag::IF>> {
 public:
-    using DerivedConditionalBranchInstruction::DerivedConditionalBranchInstruction;
+    using Super::Super;
+    [[nodiscard]] IfInst *clone(Builder &b, InstructionCloneValueResolver &resolver) const noexcept override;
 };
 
 }// namespace luisa::compute::xir

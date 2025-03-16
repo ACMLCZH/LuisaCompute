@@ -117,7 +117,7 @@ public:
 protected:
     void _decode_bool(bool x) noexcept override { _s.append(luisa::format("bool({})", x)); }
     void _decode_char(char x) noexcept override { _s.append(luisa::format("char({})", static_cast<int>(x))); }
-    void _decode_uchar(uchar x) noexcept override { _s.append(luisa::format("uchar({})", static_cast<uint>(x))); }
+    void _decode_uchar(ubyte x) noexcept override { _s.append(luisa::format("uchar({})", static_cast<uint>(x))); }
     void _decode_short(short x) noexcept override { _s.append(luisa::format("short({})", x)); }
     void _decode_ushort(ushort x) noexcept override { _s.append(luisa::format("ushort({})", x)); }
     void _decode_int(int x) noexcept override { _s.append(luisa::format("int({})", x)); }

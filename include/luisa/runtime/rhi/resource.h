@@ -60,7 +60,6 @@ struct SwapchainCreationInfo : public ResourceCreationInfo {
 };
 
 struct ShaderCreationInfo : public ResourceCreationInfo {
-    // luisa::string name;
     uint3 block_size;
 
     [[nodiscard]] static auto make_invalid() noexcept {

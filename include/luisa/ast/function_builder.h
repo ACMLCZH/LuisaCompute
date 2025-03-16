@@ -16,6 +16,9 @@
 
 // Runtime depends on AST but this file is header only.
 #include <luisa/runtime/rhi/curve_basis.h>
+namespace luisa {
+class MemorySanitizer;
+}// namespace luisa
 
 namespace lc::validation {
 class Device;
@@ -39,6 +42,7 @@ class FunctionDuplicator;
  */
 class LC_AST_API FunctionBuilder : public luisa::enable_shared_from_this<FunctionBuilder> {
 
+    friend ::luisa::MemorySanitizer;
     friend class luisa::compute::CallableLibrary;
     friend class lc::validation::Device;
     friend class FunctionDuplicator;
@@ -115,6 +119,7 @@ private:
     bool _hash_computed{false};
     bool _requires_atomic_float{false};
     bool _requires_printing{false};
+    luisa::string _name;
 
 protected:
     [[nodiscard]] static luisa::vector<FunctionBuilder *> &_function_stack() noexcept;
@@ -188,7 +193,7 @@ public:
     [[nodiscard]] static FunctionBuilder *current() noexcept;
     [[nodiscard]] static FunctionBuilder *current_or_null() noexcept;
     [[nodiscard]] static luisa::span<const FunctionBuilder *const> stack() noexcept;
-    
+
     [[nodiscard]] auto hash_computed() const noexcept { return _hash_computed; }
     // interfaces for class Function
     /// Return a span of builtin variables.
@@ -227,6 +232,10 @@ public:
     [[nodiscard]] auto variable_usage(uint uid) const noexcept { return _variable_usages[uid]; }
     /// Return block size in uint3.
     [[nodiscard]] auto block_size() const noexcept { return _block_size; }
+    /// Return name.
+    [[nodiscard]] auto name() const noexcept { return luisa::string_view{_name}; }
+    /// Return a name suitable for debugging
+    [[nodiscard]] luisa::string debug_name() const noexcept;
     /// Return hash.
     [[nodiscard]] uint64_t hash() const noexcept;
     /// Return if is raytracing.
@@ -265,6 +274,9 @@ public:
     // config
     /// Set block size
     void set_block_size(uint3 size) noexcept;
+
+    /// Set name
+    void set_name(luisa::string_view name) noexcept;
 
     // built-in variables
     /// Return thread id.

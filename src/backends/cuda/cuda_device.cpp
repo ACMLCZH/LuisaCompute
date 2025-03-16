@@ -559,11 +559,11 @@ template<bool allow_update_expected_metadata>
     return ptx_data;
 }
 
-ShaderCreationInfo CUDADevice::_create_shader(luisa::string name,
-                                              const string &source, const ShaderOption &option,
-                                              luisa::span<const char *const> nvrtc_options,
-                                              const CUDAShaderMetadata &expected_metadata,
-                                              luisa::vector<ShaderDispatchCommand::Argument> bound_arguments) noexcept {
+ShaderCreationInfo CUDADevice::_load_or_compile_shader(luisa::string name,
+                                                       const string &source, const ShaderOption &option,
+                                                       luisa::span<const char *const> nvrtc_options,
+                                                       const CUDAShaderMetadata &expected_metadata,
+                                                       luisa::vector<ShaderDispatchCommand::Argument> bound_arguments) noexcept {
 
     // generate a default name if not specified
     auto uses_user_path = !name.empty();
@@ -800,9 +800,9 @@ ShaderCreationInfo CUDADevice::create_shader(const ShaderOption &option, Functio
             }
             return t; }(),
     };
-    return _create_shader(option.name, scratch.string(),
-                          option, nvrtc_options,
-                          metadata, std::move(bound_arguments));
+    return _load_or_compile_shader(option.name, scratch.string(),
+                                   option, nvrtc_options,
+                                   metadata, std::move(bound_arguments));
 }
 
 ShaderCreationInfo CUDADevice::create_shader(const ShaderOption &option, const ir::KernelModule *kernel) noexcept {
