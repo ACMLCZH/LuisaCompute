@@ -11,16 +11,12 @@
 #include <utility>
 
 #include <luisa/core/stl/type_traits.h>
+#include <luisa/core/intrin.h>
 #include <luisa/vstl/config.h>
 
 #include <luisa/vstl/hash.h>
 #include <luisa/vstl/allocate_type.h>
 #include <luisa/vstl/compare.h>
-namespace luisa::detail {
-LUISA_EXPORT_API void *allocator_allocate(size_t size, size_t alignment) noexcept;
-LUISA_EXPORT_API void allocator_deallocate(void *p, size_t alignment) noexcept;
-LUISA_EXPORT_API void *allocator_reallocate(void *p, size_t size, size_t alignment) noexcept;
-}// namespace luisa::detail
 
 inline void *vengine_malloc(size_t size) {
     return luisa::detail::allocator_allocate(size, 0);
@@ -634,8 +630,7 @@ private:
             return std::get<idx>(funcs)(std::forward<T>(v));
         }
     };
-
-    eastl::aligned_storage_t<(detail::max_size<sizeof(AA)...>()), (detail::max_size<alignof(AA)...>())> placeHolder;
+    luisa::aligned_storage_t<(detail::max_size<sizeof(AA)...>()), (detail::max_size<alignof(AA)...>())> placeHolder;
     size_t switcher = 0;
     void m_dispose() {
         if constexpr (detail::AnyMap<std::is_trivially_destructible, true>::template Run<AA...>()) {
