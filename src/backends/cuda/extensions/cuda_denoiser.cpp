@@ -48,9 +48,7 @@ namespace luisa::compute::cuda {
 
 class CUDAOptixDenoiser : public OptixDenoiser {
 public:
-    // using OptixDenoiser::OptixDenoiser;
-    CUDAOptixDenoiser(CUDADevice *device, CUDAStream *stream) noexcept:
-        OptixDenoiser(device, stream) {}
+    using OptixDenoiser::OptixDenoiser;
     void init(const DenoiserExt::DenoiserInput &input) noexcept override{
         _device->with_handle([&] { OptixDenoiser::init(input); });
     }
