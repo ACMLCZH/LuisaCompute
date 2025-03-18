@@ -103,11 +103,17 @@ public:
     struct Feature {
         ImageFeatureType type;
         Image image;
+
+        Feature(ImageFeatureType type, Image image):
+            type{type}, image{std::move(image)} {}
     };
     struct Layer {
         Image input;
         Image output;
         ImageAOVType aov_type;
+
+        Layer(Image input, Image output, ImageAOVType aov_type):
+            input{std::move(input)}, output{std::move(output)}, aov_type{aov_type} {}
     };
 
     struct DenoiserInput {
