@@ -167,7 +167,7 @@ public:
                                 float input_scale = 1.0f) noexcept {
             features.emplace_back(
                 feature_type,
-                buffer_to_image(feature, format, cs, input_scale)
+                buffer_to_image(feature, width, height, format, cs, input_scale)
             );
         }
     };

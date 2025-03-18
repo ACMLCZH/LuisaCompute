@@ -331,8 +331,8 @@ int main(int argc, char *argv[]) {
     {
         auto input = DenoiserExt::DenoiserInput{resolution.x, resolution.y};
         input.push_noisy_image(color_buf.view(), output_buf.view(), DenoiserExt::ImageFormat::FLOAT3, DenoiserExt::ImageColorSpace::HDR);
-        input.push_feature_image("albedo", albedo_buf.view(), DenoiserExt::ImageFormat::FLOAT3, DenoiserExt::ImageColorSpace::HDR);
-        input.push_feature_image("normal", normal_buf.view(), DenoiserExt::ImageFormat::FLOAT3, DenoiserExt::ImageColorSpace::HDR);
+        input.push_feature_image(DenoiserExt::ImageFeatureType::ALBEDO, albedo_buf.view(), DenoiserExt::ImageFormat::FLOAT3, DenoiserExt::ImageColorSpace::HDR);
+        input.push_feature_image(DenoiserExt::ImageFeatureType::NORMAL, normal_buf.view(), DenoiserExt::ImageFormat::FLOAT3, DenoiserExt::ImageColorSpace::HDR);
         input.noisy_features = false;
         input.filter_quality = DenoiserExt::FilterQuality::ACCURATE;
         input.prefilter_mode = DenoiserExt::PrefilterMode::NONE;
