@@ -74,7 +74,7 @@ on_load(function(target)
         target:add("deps", "lc-vulkan-swapchain", "volk")
     end
 end)
-add_files("extensions/cuda_denoiser.cpp", "extensions/cuda_dstorage.cpp", "extensions/cuda_pinned_memory.cpp")
+add_files("extensions/cuda_optix_denoiser.cpp", "extensions/cuda_denoiser.cpp", "extensions/cuda_dstorage.cpp", "extensions/cuda_pinned_memory.cpp")
 add_links("cuda")
 
 -- after_build(function(target)
